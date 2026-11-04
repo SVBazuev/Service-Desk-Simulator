@@ -1,96 +1,60 @@
-const state = { level: 1, currentId: null, results: {}, resultsL2: {}, resultsL3: {}, orgVersions: [], createdProblems: [], l3: { requestedClarify: false, clarified: false, diagOpen: null } };
+const state = State;
 
-const INITIAL_WORKLOADS = {};
-for (const emp of EMPLOYEES) {
-  if (emp.workload !== undefined) INITIAL_WORKLOADS[emp.id] = emp.workload;
+let INITIAL_WORKLOADS = {};
+
+function bootstrapWorkloads() {
+  INITIAL_WORKLOADS = Object.fromEntries(
+    DataStore.getEmployees()
+      .filter(emp => emp.workload !== undefined)
+      .map(emp => [emp.id, emp.workload])
+  );
 }
 
 function resetWorkloads() {
-  for (const emp of EMPLOYEES) {
+  DataStore.getEmployees().forEach(emp => {
     if (emp.workload !== undefined && INITIAL_WORKLOADS[emp.id] !== undefined) {
       emp.workload = INITIAL_WORKLOADS[emp.id];
     }
-  }
-}
-
-function fillAssigneeSelect() {
-  const sel = document.getElementById("card-assignee-l2");
-  if (!sel) return;
-  fillSelect(sel, EMPLOYEES.map(e => ({
-    value: e.id,
-    label: `${e.name} (${e.role})${e.workload !== undefined ? ' • В работе: ' + e.workload : ''} - ${e.status}`
-  })));
+  });
 }
 
 function resetState() {
-  state.level = 1;
-  state.currentId = null;
-  state.results = {};
-  state.resultsL2 = {};
-  state.resultsL3 = {};
-  state.orgVersions = [];
-  state.createdProblems = [];
-  state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
+  state.reset();
   resetWorkloads();
-  fillAssigneeSelect();
 }
 
 function init() {
-  document.getElementById("btn-start").addEventListener("click", () => {
-    resetState();
-    renderQueue();
-    showScreen("screen-queue");
-  });
-  
-  fillSelect(document.getElementById("card-org"), ORGS.map(o => ({value:o.id, label:o.name})));
-  fillSelect(document.getElementById("card-chan"), [{value:"Email",label:"Email"},{value:"Телефон",label:"Телефон"},{value:"Портал самообслуживания",label:"Портал самообслуживания"},{value:"Чат на сайте",label:"Чат на сайте"},{value:"Мессенджер",label:"Мессенджер"}]);
-  fillSelect(document.getElementById("card-type"), [{value:"Инцидент",label:"Инцидент"},{value:"Запрос на обслуживание",label:"Запрос на обслуживание"},{value:"Консультация",label:"Консультация"}]);
-  fillSelect(document.getElementById("card-prod"), []);
-  fillSelect(document.getElementById("card-imp"), [{value:"высокая",label:"высокая"},{value:"средняя",label:"средняя"},{value:"низкая",label:"низкая"}]);
-  fillSelect(document.getElementById("card-urg"), [{value:"высокая",label:"высокая"},{value:"средняя",label:"средняя"},{value:"низкая",label:"низкая"}]);
-  fillAssigneeSelect();
-  fillSelect(document.getElementById("card-comment-l2"), COMMENTS_L2.map(c => ({value:c.id, label:c.text})));
+  bootstrapWorkloads();
+  bootstrapKb();
 
-  document.getElementById("card-org").addEventListener("change", onCardOrg);
-  document.getElementById("card-prod").addEventListener("change", onCardProd);
-  document.getElementById("card-cat").addEventListener("change", onCardCat);
-  document.getElementById("card-imp").addEventListener("change", onCardPri);
-  document.getElementById("card-urg").addEventListener("change", onCardPri);
-  document.getElementById("card-cont").addEventListener("change", validate);
-  document.getElementById("card-chan").addEventListener("change", validate);
-  document.getElementById("card-type").addEventListener("change", onCardType);
-  document.getElementById("card-title").addEventListener("input", validate);
-  document.getElementById("card-desc").addEventListener("input", validate);
-  document.getElementById("card-sub").addEventListener("change", validate);
-  document.getElementById("card-assignee-l2").addEventListener("change", validate);
-  document.getElementById("card-comment-l2").addEventListener("change", validate);
-  document.getElementById("btn-add-prod").addEventListener("click", addProductToCard);
+  document.getElementById("btn-to-level-select").addEventListener("click", () => {
+    renderLevelCards();
+    showScreen("screen-level-select");
+  });
+
+  document.getElementById("btn-back-to-level-select").addEventListener("click", () => {
+    renderLevelCards();
+    showScreen("screen-level-select");
+  });
+
+  document.getElementById("btn-level-reset").addEventListener("click", () => {
+    if (!confirm("Сбросить весь сохранённый прогресс по всем уровням?")) return;
+    ProgressStore.reset();
+    resetState();
+    renderLevelCards();
+  });
+
   document.getElementById("btn-clarify").addEventListener("click", requestClarification);
-  
   document.getElementById("btn-reg").addEventListener("click", register);
   document.getElementById("btn-finish").addEventListener("click", () => showResults(1));
 
   document.getElementById("btn-assign-l2").addEventListener("click", assignL2);
   document.getElementById("btn-finish-l2").addEventListener("click", () => showResults(2));
   document.getElementById("btn-start-l2-work").addEventListener("click", () => { hideModal("modal-l2-intro"); showScreen("screen-queue-l2"); });
-  document.getElementById("btn-next-level-1").addEventListener("click", () => { 
-  state.currentId = null;
-  state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
-  state.level = 2; 
-  renderQueue(); 
-  showScreen("screen-queue-l2");
-  showModal("modal-l2-intro"); 
-});
-document.getElementById("btn-next-level-2").addEventListener("click", () => {
-  state.currentId = null;
-  state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
-  state.level = 3;
-  renderQueue();
-  showScreen("screen-queue-l3");
-  showModal("modal-l3-intro");
-});
+
   document.getElementById("btn-start-l3-work").addEventListener("click", () => { hideModal("modal-l3-intro"); showScreen("screen-queue-l3"); });
   document.getElementById("btn-finish-l3").addEventListener("click", () => showResults(3));
+
   document.getElementById("btn-l3-clarify").addEventListener("click", l3RequestClarify);
   document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
   document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
@@ -108,8 +72,8 @@ document.getElementById("btn-next-level-2").addEventListener("click", () => {
   document.getElementById("l3-problem-link").addEventListener("change", l3Validate);
 
   const goBack12 = () => { state.currentId = null; if (state.level === 3) { renderQueue(); showScreen("screen-queue-l3"); return; } renderQueue(); showScreen(state.level === 1 ? "screen-queue" : "screen-queue-l2"); };
-
   const goBack = () => { state.currentId = null; renderQueue(); showScreen(state.level === 1 ? "screen-queue" : "screen-queue-l2"); };
+
   document.getElementById("btn-cancel").addEventListener("click", goBack12);
   document.getElementById("btn-back-queue").addEventListener("click", goBack12);
 
@@ -117,22 +81,22 @@ document.getElementById("btn-next-level-2").addEventListener("click", () => {
     b.addEventListener("click", () => { const id = b.getAttribute("data-close"); if (id) hideModal(id); });
   });
   document.querySelectorAll("[id^='btn-org-list']").forEach(b => b.addEventListener("click", openOrgList));
-  document.querySelectorAll("[id^='btn-emp-list']").forEach(b => b.addEventListener("click", (e) => openEmpList(state.level === 3 ? EMPLOYEES_L3 : EMPLOYEES)));
+  document.querySelectorAll("[id^='btn-emp-list']").forEach(b => b.addEventListener("click", (e) => openEmpList(state.level === 3 ? DataStore.getEmployeesL3() : DataStore.getEmployees())));
   document.querySelectorAll("[id^='btn-kb']").forEach(b => b.addEventListener("click", openKb));
   document.querySelectorAll("[id^='btn-problems']").forEach(b => b.addEventListener("click", openProblems));
-  
+
   document.getElementById("btn-res-restart").addEventListener("click", restart);
   document.getElementById("btn-reg-ok").addEventListener("click", () => {
-  hideModal("modal-reg");
-  if (state.level === 3) { l3GoBack(); return; }
-  goBack();
-});
+    hideModal("modal-reg");
+    if (state.level === 3) { l3GoBack(); return; }
+    goBack();
+  });
   document.getElementById("btn-assign-ok").addEventListener("click", () => {
-  hideModal("modal-assign");
-  state.currentId = null;
-  renderQueue();
-  showScreen("screen-queue-l2");
-});
+    hideModal("modal-assign");
+    state.currentId = null;
+    renderQueue();
+    showScreen("screen-queue-l2");
+  });
 
   buildKb();
 }
@@ -159,13 +123,21 @@ function renderQueue() {
   let done = 0;
   const tickets = getTickets();
   const results = getResults();
-  
+
+  if (state.level === 1) {
+    document.getElementById("q-total").textContent = TICKETS.length;
+  } else if (state.level === 2) {
+    document.getElementById("q-total-l2").textContent = TICKETS_L2.length;
+  } else {
+    document.getElementById("q-total-l3").textContent = TICKETS_L3.length;
+  }
+
   for (const t of tickets) {
     const reg = results[t.id] && results[t.id].registered;
     if (reg) done++;
     const item = document.createElement("div");
     item.className = "queue-item" + (reg ? " done" : "");
-    
+
     let title = t.title;
     if (state.level === 1) {
       const org = getOrg(t.orgId);
@@ -185,7 +157,7 @@ function renderQueue() {
     if (!reg) item.addEventListener("click", () => openWork(t.id));
     list.appendChild(item);
   }
-  
+
   if (state.level === 1) {
     document.getElementById("q-done").textContent = done.toString();
     document.getElementById("btn-finish").disabled = done < TICKETS.length;
@@ -194,7 +166,6 @@ function renderQueue() {
     document.getElementById("btn-finish-l2").disabled = done < TICKETS_L2.length;
   } else {
     document.getElementById("q-done-l3").textContent = done.toString();
-    document.getElementById("q-total-l3").textContent = TICKETS_L3.length.toString();
     document.getElementById("btn-finish-l3").disabled = done < TICKETS_L3.length;
   }
 }
@@ -205,7 +176,44 @@ function openWork(id) {
   const t = getTicket(id);
   if (!t) return;
   state.currentId = id;
-  
+
+  // 1. Рендерим форму на основе схемы (L2 или L1)
+  const schema = isL2 ? SCHEMA_L2 : SCHEMA_L1;
+  FormRenderer.render("dynamic-form-container", schema);
+
+  // 2. Навешиваем обработчики на новые поля
+  document.getElementById("card-org").addEventListener("change", onCardOrg);
+  document.getElementById("card-prod").addEventListener("change", onCardProd);
+  document.getElementById("card-cat").addEventListener("change", onCardCat);
+  document.getElementById("card-imp").addEventListener("change", onCardPri);
+  document.getElementById("card-urg").addEventListener("change", onCardPri);
+  document.getElementById("card-cont").addEventListener("change", validate);
+  document.getElementById("card-chan").addEventListener("change", validate);
+  document.getElementById("card-type").addEventListener("change", onCardType);
+  document.getElementById("card-title").addEventListener("input", validate);
+  document.getElementById("card-desc").addEventListener("input", validate);
+  document.getElementById("card-sub").addEventListener("change", validate);
+
+  if (isL2) {
+    document.getElementById("card-assignee").addEventListener("change", validate);
+    document.getElementById("card-comment").addEventListener("change", validate);
+  }
+
+  // 3. Заполняем базовые списки опций
+  fillSelect(document.getElementById("card-org"), DataStore.getOrgs().map(o => ({value:o.id, label:o.name})));
+  fillSelect(document.getElementById("card-prod"), []);
+  fillSelect(document.getElementById("card-cat"), []);
+  fillSelect(document.getElementById("card-sub"), []);
+
+  if (isL2) {
+    fillSelect(document.getElementById("card-assignee"), DataStore.getEmployees().map(e => ({
+      value: e.id,
+      label: `${e.name} (${e.role}) • В работе: ${e.workload !== undefined ? e.workload : 0} - ${e.status}`
+    })));
+    fillSelect(document.getElementById("card-comment"), DataStore.getCommentsL2().map(c => ({value:c.id, label:c.text})));
+  }
+
+  // 4. Заполняем данные из тикета
   const org = getOrg(t.orgId);
   const c = CONTACTS.find(x => x.id === t.contactId);
 
@@ -216,43 +224,38 @@ function openWork(id) {
   document.getElementById("frm-chan").textContent = t.channel;
   document.getElementById("frm-title").textContent = t.title;
   document.getElementById("frm-text").textContent = t.text;
-  
+
   document.getElementById("clarify-block").style.display = "none";
   document.getElementById("btn-clarify").style.display = t.clarification ? "block" : "none";
 
   document.getElementById("card-org").value = org ? org.id : "";
-  onCardOrg();
+  onCardOrg(); // Это заполнит контакты и продукты
+
   document.getElementById("card-cont").value = c ? c.id : "";
-  
   document.getElementById("card-chan").value = t.channel;
   document.getElementById("card-title").value = t.title;
   document.getElementById("card-desc").value = t.text;
-  
+
   if (isL2) {
     document.getElementById("card-type").value = t.type; onCardType();
     document.getElementById("card-prod").value = t.prod; onCardProd();
-    
-    document.getElementById("card-cat").value = t.cat; 
-    onCardCat(); 
+    document.getElementById("card-cat").value = t.cat; onCardCat();
     document.getElementById("card-sub").value = t.sub;
-    
     document.getElementById("card-imp").value = t.imp;
     document.getElementById("card-urg").value = t.urg; onCardPri();
-    
+
     document.querySelectorAll("#screen-work .form-grid select, #screen-work .form-grid input, #screen-work .form-grid textarea, #btn-add-prod, #sel-add-prod").forEach(el => el.disabled = false);
     document.querySelectorAll("#ver-list select, #ver-list button").forEach(el => el.disabled = false);
 
-    document.getElementById("l2-assignment-block").style.display = "block";
     document.getElementById("auto-box").style.display = "block";
     document.getElementById("prio-hint").style.display = "none";
     document.getElementById("btn-reg").style.display = "none";
     document.getElementById("btn-assign-l2").style.display = "inline-block";
     document.getElementById("btn-assign-l2").disabled = true;
     document.getElementById("ro-resp").textContent = "Тимлид команды Бета";
-    
-    fillAssigneeSelect();
-    document.getElementById("card-assignee-l2").value = "";
-    document.getElementById("card-comment-l2").value = "";
+
+    document.getElementById("card-assignee").value = "";
+    document.getElementById("card-comment").value = "";
   } else {
     document.getElementById("card-type").value = ""; onCardType();
     document.getElementById("card-prod").value = "";
@@ -260,16 +263,15 @@ function openWork(id) {
     fillSelect(document.getElementById("card-sub"), []);
     document.getElementById("card-imp").value = "";
     document.getElementById("card-urg").value = "";
-    
+
     document.querySelectorAll("#screen-work .form-grid select, #screen-work .form-grid input, #screen-work .form-grid textarea, #btn-add-prod, #sel-add-prod").forEach(el => el.disabled = false);
     document.querySelectorAll("#ver-list select, #ver-list button").forEach(el => el.disabled = false);
-    
-    document.getElementById("l2-assignment-block").style.display = "none";
+
     document.getElementById("auto-box").style.display = "block";
     document.getElementById("btn-reg").style.display = "inline-block";
     document.getElementById("btn-assign-l2").style.display = "none";
     document.getElementById("ro-resp").textContent = "текущий регистратор";
-    
+
     document.getElementById("auto-prio").textContent = "-";
     document.getElementById("auto-react").textContent = "-";
     document.getElementById("auto-sol").textContent = "-";
@@ -365,13 +367,13 @@ function onCardType() {
   const hint = document.getElementById("prio-hint");
   const imp = document.getElementById("card-imp");
   const urg = document.getElementById("card-urg");
-  
+
   if (state.level === 1) {
     imp.value = ""; urg.value = "";
     if (type === "Запрос на обслуживание" || type === "Консультация") {
-      hint.style.display = "block"; imp.value = "средняя"; urg.value = "средняя"; 
+      hint.style.display = "block"; imp.value = "средняя"; urg.value = "средняя";
     } else {
-      hint.style.display = "none"; 
+      hint.style.display = "none";
     }
   }
   onCardPri();
@@ -390,13 +392,20 @@ function validate() {
   const need = ["card-org","card-cont","card-chan","card-type","card-prod","card-cat","card-sub","card-imp","card-urg"];
   let ok = true;
   for (const id of need) { const el = document.getElementById(id); if (!el || el.value === "") ok = false; }
-  if (document.getElementById("card-title").value.trim() === "") ok = false;
-  if (document.getElementById("card-desc").value.trim() === "") ok = false;
+
+  const titleEl = document.getElementById("card-title");
+  if (titleEl && titleEl.value.trim() === "") ok = false;
+
+  const descEl = document.getElementById("card-desc");
+  if (descEl && descEl.value.trim() === "") ok = false;
+
   if (!state.orgVersions || state.orgVersions.length === 0) ok = false;
-  
+
   if (state.level === 2) {
-    if (document.getElementById("card-assignee-l2").value === "") ok = false;
-    if (document.getElementById("card-comment-l2").value === "") ok = false;
+    const ass = document.getElementById("card-assignee");
+    const com = document.getElementById("card-comment");
+    if (!ass || ass.value === "") ok = false;
+    if (!com || com.value === "") ok = false;
     document.getElementById("btn-assign-l2").disabled = !ok;
   } else {
     document.getElementById("btn-reg").disabled = !ok;
@@ -406,108 +415,57 @@ function validate() {
 function register() {
   const t = TICKETS.find(x => x.id === state.currentId);
   if (!t) return;
-  const chosen = {
-    org: document.getElementById("card-org").value, cont: document.getElementById("card-cont").value,
-    chan: document.getElementById("card-chan").value, type: document.getElementById("card-type").value,
-    prod: document.getElementById("card-prod").value, cat: document.getElementById("card-cat").value,
-    sub: document.getElementById("card-sub").value, vers: state.orgVersions.map(v => v.name + " " + v.ver),
-    imp: document.getElementById("card-imp").value, urg: document.getElementById("card-urg").value,
+  const formData = {
+    org: document.getElementById("card-org").value,
+    cont: document.getElementById("card-cont").value,
+    chan: document.getElementById("card-chan").value,
+    type: document.getElementById("card-type").value,
+    prod: document.getElementById("card-prod").value,
+    cat: document.getElementById("card-cat").value,
+    sub: document.getElementById("card-sub").value,
+    vers: state.orgVersions.map(v => v.name + " " + v.ver),
+    imp: document.getElementById("card-imp").value,
+    urg: document.getElementById("card-urg").value,
     prio: document.getElementById("auto-prio").textContent
   };
-  const et = t.etalon;
-  const errs = [];
-  const comparison = [];
-  const addComp = (field, val, exp, explain) => {
-    const isErr = val !== exp; if (isErr) errs.push(field);
-    comparison.push({ field, value: val || "Не выбрано", expected: exp || "-", isError: isErr, explain: explain || "" });
-  };
-  addComp("Организация", getOrg(chosen.org)?.name, getOrg(et.org)?.name, "Нужно выбрать организацию из формы.");
-  addComp("Контактное лицо", CONTACTS.find(x=>x.id===chosen.cont)?.name, getContactsByOrg(et.org).find(x=>x.id===et.cont)?.name, "Контактное лицо указано в форме.");
-  addComp("Канал связи", chosen.chan, et.chan, "Канал связи должен совпадать с формой.");
-  addComp("Тип обращения", chosen.type, et.type, t.etalon.fieldExplains.type);
-  addComp("Продукт", chosen.prod, et.prod, t.etalon.fieldExplains.prod);
-  addComp("Категория", chosen.cat, et.cat, t.etalon.fieldExplains.cat);
-  addComp("Подкатегория", chosen.sub, et.sub, t.etalon.fieldExplains.sub);
-  const verErr = !chosen.vers.includes(et.ver); if (verErr) errs.push("Версия продукта");
-  comparison.push({ field: "Версия продукта", value: chosen.vers.join(", ") || "Нет продуктов", expected: et.ver, isError: verErr, explain: t.etalon.fieldExplains.ver });
-  addComp("Важность", chosen.imp, et.imp, t.etalon.fieldExplains.imp);
-  addComp("Срочность", chosen.urg, et.urg, t.etalon.fieldExplains.urg);
-  addComp("Приоритет", chosen.prio, et.prio, "Рассчитывается автоматически на основе важности и срочности.");
 
-  state.results[t.id] = { registered: true, errs, comparison, ok: errs.length === 0, explain: et.explain };
+  state.results[t.id] = Validator.validateL1(t, formData);
   document.getElementById("reg-ok-id").textContent = t.id;
   showModal("modal-reg");
+  ProgressStore.save(1, makeSnapshot());
 }
 
 function assignL2() {
   const t = TICKETS_L2.find(x => x.id === state.currentId);
   if (!t) return;
-  const chosen = {
-    org: document.getElementById("card-org").value, cont: document.getElementById("card-cont").value,
-    chan: document.getElementById("card-chan").value, type: document.getElementById("card-type").value,
-    prod: document.getElementById("card-prod").value, cat: document.getElementById("card-cat").value,
-    sub: document.getElementById("card-sub").value, vers: state.orgVersions.map(v => v.name + " " + v.ver),
-    imp: document.getElementById("card-imp").value, urg: document.getElementById("card-urg").value
-  };
-  const chosenAss = document.getElementById("card-assignee-l2").value;
-  const chosenCom = document.getElementById("card-comment-l2").value;
-  
-  const errs = [];
-  const comparison = [];
-
-  const addComp = (field, val, exp, explain) => {
-    const isErr = val !== exp; if (isErr) errs.push(field);
-    comparison.push({ field, value: val || "Не выбрано", expected: exp || "-", isError: isErr, explain: explain || "" });
+  const formData = {
+    org: document.getElementById("card-org").value,
+    cont: document.getElementById("card-cont").value,
+    chan: document.getElementById("card-chan").value,
+    type: document.getElementById("card-type").value,
+    prod: document.getElementById("card-prod").value,
+    cat: document.getElementById("card-cat").value,
+    sub: document.getElementById("card-sub").value,
+    vers: state.orgVersions.map(v => v.name + " " + v.ver),
+    imp: document.getElementById("card-imp").value,
+    urg: document.getElementById("card-urg").value,
+    assignee: document.getElementById("card-assignee").value,
+    comment: document.getElementById("card-comment").value
   };
 
-  addComp("Организация", getOrg(chosen.org)?.name, getOrg(t.orgId)?.name, "Организация должна соответствовать обращению.");
-  addComp("Контактное лицо", CONTACTS.find(x=>x.id===chosen.cont)?.name, getContactsByOrg(t.orgId).find(x=>x.id===t.contactId)?.name, "Контактное лицо должно соответствовать обращению.");
-  addComp("Канал связи", chosen.chan, t.channel, "Канал связи должен совпадать с формой.");
-  addComp("Тип обращения", chosen.type, t.type, "Тип обращения должен соответствовать описанию.");
-  addComp("Продукт", chosen.prod, t.prod, "Продукт должен соответствовать описанию.");
-  addComp("Категория", chosen.cat, t.cat, "Категория должна соответствовать описанию.");
-  addComp("Подкатегория", chosen.sub, t.sub, "Подкатегория должна соответствовать описанию.");
-  
-  const verErr = !chosen.vers.includes(t.ver); if (verErr) errs.push("Версия продукта");
-  comparison.push({ field: "Версия продукта", value: chosen.vers.join(", ") || "Нет продуктов", expected: t.ver, isError: verErr, explain: "Версия продукта должна соответствовать карточке." });
-  
-  addComp("Важность", chosen.imp, t.imp, "Важность должна соответствовать описанию.");
-  addComp("Срочность", chosen.urg, t.urg, "Срочность должна соответствовать описанию.");
-  
-  const empName = EMPLOYEES.find(e => e.id === chosenAss)?.name || chosenAss;
-  const expName = EMPLOYEES.find(e => e.id === t.expectedAssignee)?.name || t.expectedAssignee;
-  addComp("Ответственный", empName, expName, t.explain);
-
-  const comText = COMMENTS_L2.find(c => c.id === chosenCom)?.text || chosenCom;
-  const expComText = COMMENTS_L2.find(c => c.id === t.expectedComment)?.text || t.expectedComment;
-  addComp("Комментарий", comText, expComText, "Комментарий должен соответствовать типу задачи (эскалация, анализ или стандартная работа).");
-
-  state.resultsL2[t.id] = { registered: true, errs, comparison, ok: errs.length === 0 };
+  state.resultsL2[t.id] = Validator.validateL2(t, formData);
   document.getElementById("assign-ok-id").textContent = t.id;
   showModal("modal-assign");
 
   // Обновление загруженности ответственного
-  const assignedEmp = EMPLOYEES.find(e => e.id === chosenAss);
+  const assignedEmp = DataStore.getEmployees().find(e => e.id === formData.assignee);
   if (assignedEmp && assignedEmp.workload !== undefined) {
     assignedEmp.workload += 1;
   }
-  fillAssigneeSelect();
+  ProgressStore.save(2, makeSnapshot());
 }
 
 // ===== УРОВЕНЬ 3: Инженер 2-й линии =====
-
-function l3Normalize(s) {
-  return (s || "").toString().toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[^a-zа-я0-9\s]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-function l3CheckKeywords(root, keywords) {
-  const n = l3Normalize(root);
-  const matched = keywords.filter(k => n.includes(l3Normalize(k)));
-  return { ok: matched.length >= 2, matched };
-}
 
 function l3OpenDiag(id) {
   const t = getTicket(state.currentId);
@@ -570,7 +528,6 @@ function onL3Outcome() {
   if (v === "new_problem") {
     block.style.display = "block";
     linkBlock.style.display = "none";
-    // Очищаем скрытые поля от предыдущего выбора
     document.getElementById("l3-problem-link").value = "";
     document.getElementById("l3-prob-impact").value = "";
     document.getElementById("l3-prob-prob").value = "";
@@ -581,7 +538,6 @@ function onL3Outcome() {
   } else if (v === "known_error" || v === "fixed_problem") {
     block.style.display = "none";
     linkBlock.style.display = "block";
-    // Очищаем скрытые поля блока Problem Record
     document.getElementById("l3-prob-impact").value = "";
     document.getElementById("l3-prob-prob").value = "";
     document.getElementById("l3-prob-owner").value = "";
@@ -589,7 +545,6 @@ function onL3Outcome() {
     document.getElementById("l3-prob-rfc").value = "";
     document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = false);
 
-    // Заполняем селект доступными проблемами
     linkSel.innerHTML = "";
     const def = document.createElement("option");
     def.value = ""; def.textContent = "Выберите проблему...";
@@ -607,7 +562,6 @@ function onL3Outcome() {
   } else {
     block.style.display = "none";
     linkBlock.style.display = "none";
-    // Очищаем всё
     document.getElementById("l3-problem-link").value = "";
     document.getElementById("l3-prob-impact").value = "";
     document.getElementById("l3-prob-prob").value = "";
@@ -624,10 +578,7 @@ function l3RenderProblemBlock(t) {
   wrap.innerHTML = "";
   if (!t.problem) return;
 
-  // Безопасно ищем проблему в базе
   const problemDef = PROBLEMS.find(p => p.id === t.problem.record);
-  
-  // Если проблемы нет в базе (например, PRB-3), берем текущий тикет как единственный связанный
   const incidentsToLink = problemDef ? problemDef.incidentsLinked : [t.id];
 
   for (const incId of incidentsToLink) {
@@ -660,7 +611,7 @@ function l3Validate() {
   const t = getTicket(state.currentId);
   const hint = document.getElementById("l3-submit-hint");
   if (!t) return;
-  
+
   const root = document.getElementById("l3-root").value.trim();
   const wa = document.getElementById("l3-workaround").value;
   const rad = document.getElementById("l3-radical").value;
@@ -671,7 +622,6 @@ function l3Validate() {
   if (!wa) missing.push("обходное решение");
   if (!rad) missing.push("радикальное решение");
 
-  // Проверка для НОВОЙ проблемы (поля заполнения)
   if (out === "new_problem") {
     const impact = document.getElementById("l3-prob-impact").value;
     const prob = document.getElementById("l3-prob-prob").value;
@@ -679,7 +629,7 @@ function l3Validate() {
     const method = document.getElementById("l3-prob-method").value;
     const rfc = document.getElementById("l3-prob-rfc").value.trim();
     const checks = document.getElementById("l3-prob-incidents").querySelectorAll(".l3-prob-inc-check:checked");
-    
+
     if (!impact) missing.push("влияние проблемы");
     if (!prob) missing.push("вероятность повторения");
     if (!owner) missing.push("владелец проблемы");
@@ -688,7 +638,6 @@ function l3Validate() {
     if (checks.length === 0) missing.push("связанные инциденты (отметьте хотя бы одно)");
   }
 
-  // Проверка для ПРИВЯЗКИ к существующей проблеме
   if (out === "known_error" || out === "fixed_problem") {
     const linkedProb = document.getElementById("l3-problem-link").value;
     if (!linkedProb) missing.push("связанная проблема");
@@ -749,9 +698,22 @@ function openL3Work(id) {
   document.getElementById("l3-problem-link").innerHTML = "";
   document.getElementById("l3-problem-link-block").style.display = "none";
   document.getElementById("l3-prob-prob").value = "";
-  fillSelect(document.getElementById("l3-prob-owner"), EMPLOYEES_L3.map(e => ({ value: e.id, label: e.name + " (" + e.role + ")" })));
+  fillSelect(document.getElementById("l3-prob-owner"), DataStore.getEmployeesL3().map(e => ({ value: e.id, label: e.name + " (" + e.role + ")" })));
   fillSelect(document.getElementById("l3-prob-method"), PROBLEM_METHODS.map(m => ({ value: m, label: m })));
   document.getElementById("l3-prob-rfc").value = "";
+
+  // --- НОВАЯ ЛОГИКА: Фильтрация доступных исходов ---
+  const outcomeSelect = document.getElementById("l3-outcome");
+  // Восстанавливаем все опции перед фильтрацией
+  Array.from(outcomeSelect.options).forEach(opt => opt.style.display = "");
+  // Если сценарий не предполагает создание проблемы (t.problem === null), скрываем эту опцию
+  if (!t.problem) {
+    const newProblemOpt = Array.from(outcomeSelect.options).find(opt => opt.value === "new_problem");
+    if (newProblemOpt) newProblemOpt.style.display = "none";
+  }
+  outcomeSelect.value = ""; // Сбрасываем выбор
+  // -------------------------------------------------
+  
   l3RenderDiagTabs();
   l3RenderProblemBlock(t);
   onL3Outcome();
@@ -763,148 +725,47 @@ function openL3Work(id) {
 function l3Submit() {
   const t = TICKETS_L3.find(x => x.id === state.currentId);
   if (!t) return;
-  const root = document.getElementById("l3-root").value.trim();
-  const waIdx = document.getElementById("l3-workaround").value;
-  const radIdx = document.getElementById("l3-radical").value;
-  const out = document.getElementById("l3-outcome").value;
 
-  const rootRes = l3CheckKeywords(root, t.rootKeywords);
-  const errs = [];
-  const comparison = [];
-  const addComp = (field, val, exp, explain) => {
-    const isErr = val !== exp; if (isErr) errs.push(field);
-    comparison.push({ field, value: val || "Не выбрано", expected: exp || "-", isError: isErr, explain: explain || "" });
+  const formData = {
+    root: document.getElementById("l3-root").value.trim(),
+    waIdx: document.getElementById("l3-workaround").value,
+    radIdx: document.getElementById("l3-radical").value,
+    out: document.getElementById("l3-outcome").value,
+    impact: document.getElementById("l3-prob-impact").value,
+    prob: document.getElementById("l3-prob-prob").value,
+    owner: document.getElementById("l3-prob-owner").value,
+    method: document.getElementById("l3-prob-method").value,
+    rfc: document.getElementById("l3-prob-rfc").value.trim(),
+    checked: Array.from(document.querySelectorAll(".l3-prob-inc-check:checked")).map(x => x.value),
+    linkedProb: document.getElementById("l3-problem-link").value,
+    dupVal: document.getElementById("l3-dup-of").value
   };
 
-  comparison.push({
-    field: "Корневая причина",
-    value: root || "Не заполнено",
-    expected: "ключевые: " + t.rootKeywords.join(", "),
-    isError: !rootRes.ok,
-    explain: rootRes.ok
-      ? "Поймано по ключевым словам: " + rootRes.matched.join(", ") + "."
-      : "Укажите первопричину своими словами. Подсказка: " + t.rootHint + ". (найдено слов: " + rootRes.matched.join(", ") + ")"
-  });
-  if (!rootRes.ok) errs.push("Корневая причина");
+  const result = Validator.validateL3(t, formData);
+  state.resultsL3[t.id] = result;
 
-  const waCorrect = parseInt(waIdx, 10) === t.workaroundCorrect;
-  comparison.push({
-    field: "Обходное решение",
-    value: t.workarounds[parseInt(waIdx, 10)] || "Не выбрано",
-    expected: t.workarounds[t.workaroundCorrect],
-    isError: !waCorrect,
-    explain: waCorrect ? "" : "Выберите решение, которое реально снимает боль заказчика прямо сейчас."
-  });
-  if (!waCorrect) errs.push("Обходное решение");
-
-  const radCorrect = parseInt(radIdx, 10) === t.radicalCorrect;
-  comparison.push({
-    field: "Радикальное решение",
-    value: t.radical[parseInt(radIdx, 10)] || "Не выбрано",
-    expected: t.radical[t.radicalCorrect],
-    isError: !radCorrect,
-    explain: radCorrect ? "" : "Радикальное решение устраняет первопричину. Сравните с тем, что вы нашли в диагностике."
-  });
-  if (!radCorrect) errs.push("Радикальное решение");
-
-  const outCorrect = out === t.outcome.correct;
-  const outLabel = { resolved: "Решено", new_problem: "Новая проблема", known_error: "Известная ошибка", fixed_problem: "Исправленная проблема" };
-  addComp("Исход обращения", outLabel[out] || out, outLabel[t.outcome.correct], t.outcome.explain);
-  if (!outCorrect) errs.push("Исход обращения");
-
-
-  if (out === "new_problem") {
-    const impact = document.getElementById("l3-prob-impact").value;
-    const prob = document.getElementById("l3-prob-prob").value;
-    const owner = document.getElementById("l3-prob-owner").value;
-    const method = document.getElementById("l3-prob-method").value;
-    const rfc = document.getElementById("l3-prob-rfc").value.trim();
-    const checked = Array.from(document.querySelectorAll(".l3-prob-inc-check:checked")).map(x => x.value);
-    const rfcOk = l3CheckKeywords(rfc, t.rootKeywords).ok;
-
-    // Безопасно ищем проблему в базе (вдруг её там нет, как в случае с PRB-3)
-    const problemDef = PROBLEMS.find(p => p.id === t.problem.record);
-    const expectedIncidents = problemDef ? problemDef.incidentsLinked : [t.id]; 
-    const incErr = checked.length !== expectedIncidents.length ||
-               !expectedIncidents.every(id => checked.includes(id));
-    if (incErr) errs.push("Связанные инциденты");
-    comparison.push({
-      field: "Связанные инциденты",
-      value: checked.length ? checked.join(", ") : "Не указаны",
-      expected: expectedIncidents.join(", "),
-      isError: incErr,
-      explain: incErr ? "Отметьте все обращения, которые объясняются этой первопричиной." : ""
-    });
-
-    addComp("Проблема", problemDef ? problemDef.title : "Новая проблема (черновик)", problemDef ? problemDef.title : "Новая проблема (черновик)", "Инцидент относится к известной проблеме. Проблема объединяет повторяющиеся инциденты с одной первопричиной.");
-    addComp("Влияние", impact, t.problem.impact, "Оцените масштаб: несколько организаций/отделов - высокое, одна организация - среднее, точечно - низкое.");
-    addComp("Вероятность повторения", prob, t.problem.prob, "Пока фикс не внедрён, проблема будет повторяться.");
-    addComp("Владелец", EMPLOYEES_L3.find(e => e.id === owner)?.name || owner, EMPLOYEES_L3.find(e => e.id === t.problem.owner)?.name, "Владелец - тот, кто ведёт расследование: L3 или разработчик (Справочник сотрудников).");
-    addComp("Метод расследования", method, t.problem.method, "Выберите метод под тип задачи: цепочка причин - «5 почему», много факторов - «Исикава», технический сбой - «анализ логов».");
-    const rfcErr = !rfcOk;
-    if (rfcErr) errs.push("RFC");
-    comparison.push({
-      field: "RFC",
-      value: rfc || "Не заполнено",
-      expected: "ключевые: " + t.rootKeywords.join(", "),
-      isError: rfcErr,
-      explain: rfcErr ? "RFC должен конкретизировать изменение в продукте (что чиним) и обходное решение до фикса." : ""
-    });
-  } else if (out === "known_error" || out === "fixed_problem") {
-    const linkedProb = document.getElementById("l3-problem-link").value;
-    const isErr = linkedProb !== t.linkedProblemId;
-    if (isErr) errs.push("Связанная проблема");
-    comparison.push({
-      field: "Связанная проблема",
-      value: linkedProb || "Не выбрана",
-      expected: t.linkedProblemId || "Не требуется",
-      isError: isErr,
-      explain: isErr ? "Выбрана неверная проблема. Обратите внимание на корневую причину и статус проблемы." : "Проблема привязана верно."
-    });
-  } else {
-    comparison.push({ field: "Problem Record", value: "Не требуется", expected: "Не требуется", isError: false, explain: "Это отдельный инцидент (или не инцидент), повторяющегося паттерна нет." });
-  }
-
-  if (t.duplicateOf) {
-    const dupVal = document.getElementById("l3-dup-of").value;
-    const dupCorrect = dupVal === t.duplicateOf;
-    if (!dupCorrect) errs.push("Связь с дубликатом");
-    comparison.push({
-      field: "Связь с повторным обращением",
-      value: dupVal || "Не указана",
-      expected: t.duplicateOf,
-      isError: !dupCorrect,
-      explain: "Обратите внимание на текст: это повтор ранее разобранных симптомов. Свяжите с первичным обращением."
-    });
-  }
-
-  // --- ДОБАВЛЕННЫЙ БЛОК ---
-  // Если выбрана новая проблема и пользователь заполнил её без ошибок, сохраняем ее в "созданные"
-  if (out === "new_problem" && errs.length === 0) {
-    if (!state.createdProblems.includes(t.problem.record)) {
-      state.createdProblems.push(t.problem.record);
+  if (formData.out === "new_problem" && result.errs.length === 0) {
+    if (!state.createdProblems.includes(t.problem?.record)) {
+      state.createdProblems.push(t.problem?.record);
     }
   }
-  // ------------------------
 
-  state.resultsL3[t.id] = { registered: true, errs, comparison, ok: errs.length === 0 };
   document.getElementById("reg-ok-id").textContent = t.id;
   showModal("modal-reg");
+  ProgressStore.save(3, makeSnapshot());
 }
 
 function openProblems() {
   const body = document.getElementById("problems-body");
   body.innerHTML = "";
   const resolvedIds = Object.keys(state.resultsL3).filter(id => state.resultsL3[id].registered);
-  
+
   if (resolvedIds.length === 0) {
     body.innerHTML = "<div style='color: var(--sub); font-size: 14px;'>Пока нет зарегистрированных Problem Records. Они появляются, когда вы закрываете обращение с исходом «Known Error».</div>";
   }
 
-  // Собираем список проблем для отображения: берем базовые из PROBLEMS
   let displayProblems = [...PROBLEMS];
 
-  // Если мы успешно создали PRB-3 в процессе игры, добавляем её в список
   if (state.createdProblems && state.createdProblems.includes("PRB-3")) {
     displayProblems.push({
       id: "PRB-3",
@@ -918,31 +779,28 @@ function openProblems() {
       owner: "E6",
       method: "5 почему",
       rfc: "Бэкпортировать механизм фильтрации уведомлений по ролям/событиям из 5.0 в 4.9 либо согласовать план обновления клиентов 4.9 до 5.x. До внедрения - ручная настройка событий «на согласовании мне» и «отклонено».",
-      // Добавляем архивный список прямо сюда, чтобы он подхватился при отрисовке
       archiveList: [
         { id: "TK-310", title: "Массовая рассылка уведомлений парализует работу отдела", org: "АО «Северная Мебель»" }
       ]
     });
   }
 
-  // Отрисовываем карточки
   for (const p of displayProblems) {
-    // Берем только архивные инциденты для визуализации (они уже закрыты)
     const archiveList = p.archiveList || ARCHIVE_INCIDENTS[p.id] || [];
     const linked = archiveList.map(inc => {
       return `<li style="margin-bottom: 4px;">${inc.id} • ${inc.title} <span class="tag ok" style="font-size: 11px;">закрыто</span> <span style="color: var(--sub); font-size: 11px;">(${inc.org})</span></li>`;
     }).join("");
     const card = document.createElement("div");
     card.style.cssText = "border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #f8fafc;";
-    const statusBadge = p.status === "resolved" 
-      ? '<span class="tag ok" style="margin-left: 8px;">Исправлена</span>' 
+    const statusBadge = p.status === "resolved"
+      ? '<span class="tag ok" style="margin-left: 8px;">Исправлена</span>'
       : '<span class="tag bad" style="margin-left: 8px;">В работе (известная ошибка)</span>';
-      
+
     card.innerHTML = `
       <div style="font-weight: 600; margin-bottom: 6px;">${p.id} • ${p.title} ${statusBadge}</div>
       <div style="font-size: 13px; color: var(--sub); margin-bottom: 8px;">Первопричина: ${p.rootCause}</div>
       <div style="font-size: 13px;"><b>Связанные инциденты:</b><ul style="margin: 6px 0 8px 18px; padding: 0;">${linked}</ul></div>
-      <div style="font-size: 13px;"><b>Владелец:</b> ${EMPLOYEES_L3.find(e => e.id === p.owner)?.name || p.owner} • <b>Метод:</b> ${p.method} • <b>Влияние:</b> ${p.impact} • <b>Вероятность:</b> ${p.prob}</div>
+      <div style="font-size: 13px;"><b>Владелец:</b> ${DataStore.getEmployeesL3().find(e => e.id === p.owner)?.name || p.owner} • <b>Метод:</b> ${p.method} • <b>Влияние:</b> ${p.impact} • <b>Вероятность:</b> ${p.prob}</div>
       <div style="font-size: 13px; margin-top: 8px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px;"><b>RFC:</b> ${p.rfc}</div>
     `;
     body.appendChild(card);
@@ -960,7 +818,7 @@ function showResults(level) {
   for (const t of tickets) {
     const r = results[t.id] || {registered:false, errs:[], comparison:[], ok:false};
     const tr = document.createElement("tr");
-    
+
     let formHtml = "";
     if (level === 1) {
       const orgObj = getOrg(t.orgId); const contactObj = CONTACTS.find(c => c.id === t.contactId);
@@ -986,8 +844,7 @@ function showResults(level) {
     tbody.appendChild(tr);
   }
 
-  document.getElementById("btn-next-level-1").style.display = level === 1 ? "inline-block" : "none";
-  document.getElementById("btn-next-level-2").style.display = level === 2 ? "inline-block" : "none";
+  ProgressStore.save(level, { ...makeSnapshot(), finishedAt: Date.now() });
   showScreen("screen-res");
 }
 
@@ -999,7 +856,7 @@ function restart() {
 function openOrgList() {
   const tbody = document.getElementById("org-list-body");
   tbody.innerHTML = "";
-  for (const org of ORGS) {
+  for (const org of DataStore.getOrgs()) {
     const tr = document.createElement("tr");
     const prods = org.products.map(p => p.name + " " + p.ver).join("<br>");
     tr.innerHTML = `<td><b>${org.name}</b></td><td>${org.desc}</td><td>${prods}</td><td><button class="btn" onclick="openContacts('${org.id}', '${org.name}')">Контакты</button></td>`;
@@ -1009,7 +866,7 @@ function openOrgList() {
 }
 
 function openEmpList(list) {
-  list = list || EMPLOYEES;
+  list = list || DataStore.getEmployees();
   const tbody = document.getElementById("emp-list-body");
   tbody.innerHTML = "";
   for (const emp of list) {
@@ -1032,30 +889,34 @@ function openContacts(orgId, orgName) {
   showModal("modal-contacts");
 }
 
-const KB = [
-  { title: "О компании «Про.Софт»", html: `<h3>О компании «Про.Софт»</h3><p><b>ООО «Про.Софт»</b> - российский разработчик корпоративного программного обеспечения.</p><p>Более 12 лет создаёт и развивает продукты для электронного документооборота, управления продажами и закупками.</p>` },
-  { title: "Продукты компании", html: `<h3>Продукты</h3><table><tr><th>Продукт</th><th>Назначение</th></tr><tr><td>Про.Документы</td><td>Система электронного документооборота (СЭД). Позволяет управлять договорами, внутренним согласованием документов, ведением карточек контрагентов и настройкой маршрутов.</td></tr><tr><td>Про.Продажи</td><td>Система управления взаимоотношениями с клиентами (CRM). Позволяет вести клиентскую базу, управлять сделками и воронкой продаж, строить аналитические отчеты.</td></tr><tr><td>Про.Закупки</td><td>Система управления закупками (SRM). Позволяет создавать и согласовывать заявки на закупку, вести каталог товаров и поставщиков, контролировать исполнения договоров.</td></tr></table>` },
-  { title: "Типы обращений", html: `<h3>Типы обращений</h3><table><tr><th>Тип</th><th>Описание</th></tr><tr><td>Инцидент</td><td>Незапланированный сбой или снижение качества работы ПО.</td></tr><tr><td>Запрос на обслуживание</td><td>Стандартная процедура (дистрибутив, доступ, лицензия).</td></tr><tr><td>Консультация</td><td>Вопрос по использованию, настройке или возможностям продукта.</td></tr></table>` },
-  { title: "Линии поддержки и Эскалация", html: `<h3>Линии поддержки</h3><p>Работа техподдержки делится на уровни (линии). Каждая линия решает задачи определенной сложности.</p><table><tr><th>Линия</th><th>Задачи</th><th>Кто работает</th></tr><tr><td>1-я линия (L1)</td><td>Прием обращений, регистрация, консультации по базовым вопросам, выдача доступов и дистрибутивов.</td><td>Иванов Иван, Фёдорова Ольга, Волкова Дарья</td></tr><tr><td>2-я линия (L2)</td><td>Решение типовых инцидентов, требующих экспертизы в продукте (настройка, анализ логов, обходные пути).</td><td>Петрова Анна, Сидоров Олег, Никитин Павел, Морозов Артём</td></tr><tr><td>3-я линия (L3)</td><td>Сложные инциденты, баги в коде, проблемы с БД и инфраструктурой. Передача разработчикам.</td><td>Кузнецов Сергей</td></tr></table><h3>Эскалация</h3><p><b>Эскалация</b> – это передача обращения на более высокий уровень компетенции или ответственности, когда текущих полномочий, знаний или ресурсов недостаточно для решения. Это рабочий инструмент, а не признак плохой работы!</p><ul><li><b>Функциональная (горизонтальная):</b> привлечение более опытного коллеги (например, с L1 на L2 или L3).</li><li><b>Иерархическая (вертикальная):</b> подключение руководителя или менеджера (например, при риске нарушения SLA, недовольстве клиента, вопросах оплаты/сроков).</li></ul><p><i>Когда эскалировать:</i> ситуация выходит за рамки компетенции; требуется привлечение смежного отдела; есть риск нарушения SLA; клиент проявляет недовольство.</p>` },
-  { title: "Управление инцидентами", html: `<h3>Управление инцидентами (Incident Management)</h3><p>Практика ITIL, цель которой - как можно быстрее восстановить нормальную работу ИТ-услуг.</p><p><b>Жизненный цикл инцидента:</b></p><ol><li><b>Выявление:</b> пользователь или мониторинг зафиксировали сбой.</li><li><b>Регистрация:</b> создание тикета, фиксация данных.</li><li><b>Классификация:</b> определение категории (кому передать).</li><li><b>Приоритизация:</b> оценка важности и срочности (по матрице).</li><li><b>Распределение:</b> назначение исполнителя.</li><li><b>Диагностика:</b> поиск причины (сбор логов, опрос пользователя).</li><li><b>Решение:</b> устранение причин/условий (или предоставление обходного пути).</li><li><b>Закрытие:</b> подтверждение решения у пользователя.</li></ol><p><b>Важно:</b> Инцидент - это симптом. Мы лечим симптом (восстанавливаем работу). Причину лечит управление проблемами.</p>` },
-  { title: "Управление проблемами", html: `<h3>Управление проблемами (Problem Management)</h3><p>Практика ITIL, которая находит корневые причины инцидентов и не дает сбоям повторяться.</p><p><b>Проблема</b> – это скрытая причина одного или нескольких инцидентов.</p><p><b>Жизненный цикл проблемы:</b></p><ol><li>Выявление (по повторяющимся инцидентам).</li><li>Регистрация (назначение владельца).</li><li>Категоризация.</li><li>Приоритизация (оценка влияния и вероятности повторения).</li><li><b>Расследование:</b> поиск Root Cause (первопричины). Используются методы: 5 почему, диаграмма Исикавы.</li><li>Решение: создание запроса на изменение (RFC) для разработчиков.</li><li>Закрытие (после внедрения исправления и проверки).</li><li>Контроль (наблюдение, не вернулась ли проблема).</li></ol><p><b>Известная ошибка (Known Error):</b> проблема, причина которой найдена, но исправление еще не внедрено. Для нее фиксируется обходное решение, которым пользуется поддержка.</p>` },
-  { title: "Каналы связи", html: `<h3>Каналы связи</h3><p>Канал связи показывает, каким именно способом заказчик обратился в поддержку. Это важно для понимания контекста обращения и выбора способа ответа.</p><table><tr><th>Канал</th><th>Описание</th></tr><tr><td>Email</td><td>Письмо на почту поддержки. Позволяет приложить скриншоты и подробно описать проблему.</td></tr><tr><td>Телефон</td><td>Звонок на горячую линию. Требует оперативного ответа, но может быть менее детальным. Регистратор фиксирует суть разговора.</td></tr><tr><td>Портал самообслуживания</td><td>Заявка, которую пользователь самостоятельно оформил в личном кабинете. Обычно содержит структурированную информацию.</td></tr><tr><td>Чат на сайте</td><td>Онлайн-консультация. Позволяет быстро уточнить детали в диалоге.</td></tr><tr><td>Мессенджер</td><td>Обращение через Telegram, WhatsApp и другие системы. Не всегда официальный канал, но часто используется для быстрых вопросов.</td></tr></table>` },
-  { title: "Важность и срочность. Матрица приоритета", html: `<h3>Матрица</h3><table><tr><th>Важность \\ Срочность</th><th>Высокая</th><th>Средняя</th><th>Низкая</th></tr><tr><td>Высокая</td><td>Критический</td><td>Высокий</td><td>Средний</td></tr><tr><td>Средняя</td><td>Высокий</td><td>Средний</td><td>Низкий</td></tr><tr><td>Низкая</td><td>Средний</td><td>Низкий</td><td>Низкий</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Согласно регламентам компании, для типов обращений <b>«Запрос на обслуживание»</b> и <b>«Консультация»</b> по умолчанию автоматически устанавливается <b>средняя важность</b> и <b>средняя срочность</b> (Приоритет «Средний»). Это связано с тем, что данные обращения не блокируют критически важные бизнес-процессы.</p><p>Однако, если в тексте обращения заказчик <u>явно указывает</u> на жесткие дедлайны, остановку работы или высокую критичность (например, «нужно срочно», «работа встала»), регистратор обязан изменить важность или срочность вручную в соответствии с матрицей.</p>` },
-  { title: "SLA и сроки", html: `<table><tr><th>Приоритет</th><th>Срок реакции</th><th>Время решения</th></tr><tr><td>Критический</td><td>2 часа</td><td>6 часов</td></tr><tr><td>Высокий</td><td>4 часа</td><td>12 часов</td></tr><tr><td>Средний</td><td>8 часов</td><td>24 часа</td></tr><tr><td>Низкий</td><td>24 часа</td><td>32 часа</td></tr></table>` },
-  { title: "Категории и подкатегории", html: `<h3>Категории и подкатегории</h3><p><b>Категория</b> - это крупный модуль или область функционала внутри выбранного продукта.</p><p><b>Подкатегория</b> - это конкретная функция или действие внутри этого модуля. Выбор подкатегории зависит от того, какая категория была выбрана до этого.</p><p style="margin-top: 16px;"><b>Структура категорий по продуктам:</b></p><table><tr><th>Продукт</th><th>Категория</th><th>Возможные подкатегории</th></tr><tr><td rowspan="4"><b>Про.Документы</b></td><td>Документооборот</td><td>Регистрация документов, Согласование документов, Хранение и поиск документов</td></tr><tr><td>Договоры и контрагенты</td><td>Карточки контрагенты, Договоры, Поручения по договорам</td></tr><tr><td>Интеграции и обмен</td><td>Интеграция с 1С, Интеграция с ЭДО, Почтовый обмен</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Продажи</b></td><td>Клиенты и контакты</td><td>Карточка клиента, Контакты и связи, Сегменты и группы</td></tr><tr><td>Сделки и воронка</td><td>Создание и ведение сделок, Этапы воронки, Задачи и напоминания</td></tr><tr><td>Отчёты и аналитика</td><td>Стандартные отчёты, Дашборды, Экспорт данных</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Закупки</b></td><td>Заявки на закупку</td><td>Создание заявки, Согласование заявки, Статусы и маршруты</td></tr><tr><td>Поставщики и каталог</td><td>Карточка поставщика, Каталог товаров/услуг, Оценка поставщиков</td></tr><tr><td>Договоры закупок</td><td>Создание договора, Согласование договора, Исполнение и контроль</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Категория «Стандартные процедуры» присутствует во всех трех продуктах. Она используется для стандартных процедур: выдачи дистрибутивов, доступов, лицензий. Тип обращения в таком случае должен быть «Запрос на обслуживание».</p>` },
-  { title: "Структура карточки обращения", html: `<h3>Структура карточки обращения</h3><table><tr><th>Поле</th><th>Описание</th></tr><tr><td><b>Организация</b></td><td>Наименование организации, от которой поступило обращение. Полное название и описание можно узнать в <span class="kb-link" onclick="goToKbTab('О компании «Про.Софт»')">«Справочнике организаций»</span>.</td></tr><tr><td><b>Контактное лицо</b></td><td>Наименование контактного лица. Указывает, кто именно является инициатором обращения. Список доступных контактов можно посмотреть в «Справочнике организаций», нажав кнопку «Контактные лица».</td></tr><tr><td><b>Канал связи</b></td><td>Откуда поступило обращение (Email, Телефон, Портал, Чат и т.д.). Необходим для понимания контекста и способа ответа. Подробнее о каналах связи можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Каналы связи')">«Каналы связи»</span>.</td></tr><tr><td><b>Заголовок</b></td><td>Краткая суть инцидента или запроса. Обычно заполняется в формате «ошибка + действие, при котором она возникает».</td></tr><tr><td><b>Описание ситуации</b></td><td>Вся информация по обращению, скопированная из формы заказчика.</td></tr><tr><td><b>Тип обращения</b></td><td>Группа (тип), к которой относится обращение: инцидент, запрос на обслуживание или консультация. Подробнее можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Типы обращений')">«Типы обращений»</span>.</td></tr><tr><td><b>Продукт</b></td><td>Программный продукт, с которым возникла проблема или по которому задан вопрос.</td></tr><tr><td><b>Категория</b></td><td>Модуль или область продукта. Зависит от выбранного продукта.</td></tr><tr><td><b>Подкатегория</b></td><td>Конкретный функционал внутри модуля. Зависит от выбранной категории.</td></tr><tr><td><b>Продукты и версии</b></td><td>Список продуктов и их версий, которые используются у заказчика.</td></tr><tr><td><b>Важность</b></td><td>Степень влияния проблемы на бизнес-процессы заказчика.</td></tr><tr><td><b>Срочность</b></td><td>То, как быстро нужно решить проблему.</td></tr><tr><td><b>Номер</b></td><td>Уникальный идентификатор обращения в системе.</td></tr><tr><td><b>Ответственный</b></td><td>Сотрудник поддержки, который взял обращение в работу.</td></tr><tr><td><b>Состояние обращения</b></td><td>Текущий статус обращения.</td></tr><tr><td><b>Код закрытия</b></td><td>Причина, по которой обращение было закрыто.</td></tr><tr><td><b>Приоритет</b></td><td>Рассчитывается автоматически на основе Важности и Срочности по <span class="kb-link" onclick="goToKbTab('Важность и срочность. Матрица приоритета')">матрице приоритетов</span>.</td></tr><tr><td><b>Срок реакции</b></td><td>Время, за которое поддержка должна отреагировать на обращение.</td></tr><tr><td><b>Время решения</b></td><td>Время, отведенное на полное решение проблемы.</td></tr></table>` },
-  { title: "Порядок регистрации", html: `<ol><li>Прочитать форму</li><li>При необходимости запросить уточнение у заказчика</li><li>Проверить «Справочник организаций»</li><li>Выбрать тип обращения</li><li>Определить продукт/категорию/подкатегорию</li><li>Проверить продукты и версии</li><li>Оценить важность и срочность</li><li>Зарегистрировать</li></ol>` },
-  { title: "Коды закрытия", html: `<ul><li>Решено</li><li>Решено инициатором</li><li>Отказано</li><li>Недостаточно информации</li><li>Дубликат</li><li>Передано</li></ul>` },
-  { title: "Частые ошибки", html: `<ul><li>Путаница важности и срочности</li><li>Неверный продукт/категория/подкатегория</li><li>Неверная версия</li><li>Не выбран тип обращения</li></ul>` },
-  { title: "Как работать на 2-й линии", html: KB_L3[0].html },
-  { title: "Диагностика: что читать в логах", html: KB_L3[1].html },
-  { title: "Обходное и радикальное решение", html: KB_L3[2].html },
-  { title: "Known Error (известная ошибка)", html: KB_L3[3].html },
-  { title: "Problem Record (карточка проблемы)", html: KB_L3[4].html },
-  { title: "Методы расследования: 5 почему", html: KB_L3[5].html },
-  { title: "Методы расследования: Исикава", html: KB_L3[6].html },
-  { title: "Дубликаты и повторные инциденты", html: KB_L3[7].html }
-];
+let KB = [];
+
+function bootstrapKb() {
+  KB = [
+    { title: "О компании «Про.Софт»", html: `<h3>О компании «Про.Софт»</h3><p><b>ООО «Про.Софт»</b> - российский разработчик корпоративного программного обеспечения.</p><p>Более 12 лет создаёт и развивает продукты для электронного документооборота, управления продажами и закупками.</p>` },
+    { title: "Продукты компании", html: `<h3>Продукты</h3><table><tr><th>Продукт</th><th>Назначение</th></tr><tr><td>Про.Документы</td><td>Система электронного документооборота (СЭД). Позволяет управлять договорами, внутренним согласованием документов, ведением карточек контрагентов и настройкой маршрутов.</td></tr><tr><td>Про.Продажи</td><td>Система управления взаимоотношениями с клиентами (CRM). Позволяет вести клиентскую базу, управлять сделками и воронкой продаж, строить аналитические отчеты.</td></tr><tr><td>Про.Закупки</td><td>Система управления закупками (SRM). Позволяет создавать и согласовывать заявки на закупку, вести каталог товаров и поставщиков, контролировать исполнения договоров.</td></tr></table>` },
+    { title: "Типы обращений", html: `<h3>Типы обращений</h3><table><tr><th>Тип</th><th>Описание</th></tr><tr><td>Инцидент</td><td>Незапланированный сбой или снижение качества работы ПО.</td></tr><tr><td>Запрос на обслуживание</td><td>Стандартная процедура (дистрибутив, доступ, лицензия).</td></tr><tr><td>Консультация</td><td>Вопрос по использованию, настройке или возможностям продукта.</td></tr></table>` },
+    { title: "Линии поддержки и Эскалация", html: `<h3>Линии поддержки</h3><p>Работа техподдержки делится на уровни (линии). Каждая линия решает задачи определенной сложности.</p><table><tr><th>Линия</th><th>Задачи</th><th>Кто работает</th></tr><tr><td>1-я линия (L1)</td><td>Прием обращений, регистрация, консультации по базовым вопросам, выдача доступов и дистрибутивов.</td><td>Иванов Иван, Фёдорова Ольга, Волкова Дарья</td></tr><tr><td>2-я линия (L2)</td><td>Решение типовых инцидентов, требующих экспертизы в продукте (настройка, анализ логов, обходные пути).</td><td>Петрова Анна, Сидоров Олег, Никитин Павел, Морозов Артём</td></tr><tr><td>3-я линия (L3)</td><td>Сложные инциденты, баги в коде, проблемы с БД и инфраструктурой. Передача разработчикам.</td><td>Кузнецов Сергей</td></tr></table><h3>Эскалация</h3><p><b>Эскалация</b> – это передача обращения на более высокий уровень компетенции или ответственности, когда текущих полномочий, знаний или ресурсов недостаточно для решения. Это рабочий инструмент, а не признак плохой работы!</p><ul><li><b>Функциональная (горизонтальная):</b> привлечение более опытного коллеги (например, с L1 на L2 или L3).</li><li><b>Иерархическая (вертикальная):</b> подключение руководителя или менеджера (например, при риске нарушения SLA, недовольстве клиента, вопросах оплаты/сроков).</li></ul><p><i>Когда эскалировать:</i> ситуация выходит за рамки компетенции; требуется привлечение смежного отдела; есть риск нарушения SLA; клиент проявляет недовольство.</p>` },
+    { title: "Управление инцидентами", html: `<h3>Управление инцидентами (Incident Management)</h3><p>Практика ITIL, цель которой - как можно быстрее восстановить нормальную работу ИТ-услуг.</p><p><b>Жизненный цикл инцидента:</b></p><ol><li><b>Выявление:</b> пользователь или мониторинг зафиксировали сбой.</li><li><b>Регистрация:</b> создание тикета, фиксация данных.</li><li><b>Классификация:</b> определение категории (кому передать).</li><li><b>Приоритизация:</b> оценка важности и срочности (по матрице).</li><li><b>Распределение:</b> назначение исполнителя.</li><li><b>Диагностика:</b> поиск причины (сбор логов, опрос пользователя).</li><li><b>Решение:</b> устранение причин/условий (или предоставление обходного пути).</li><li><b>Закрытие:</b> подтверждение решения у пользователя.</li></ol><p><b>Важно:</b> Инцидент - это симптом. Мы лечим симптом (восстанавливаем работу). Причину лечит управление проблемами.</p>` },
+    { title: "Управление проблемами", html: `<h3>Управление проблемами (Problem Management)</h3><p>Практика ITIL, которая находит корневые причины инцидентов и не дает сбоям повторяться.</p><p><b>Проблема</b> – это скрытая причина одного или нескольких инцидентов.</p><p><b>Жизненный цикл проблемы:</b></p><ol><li>Выявление (по повторяющимся инцидентам).</li><li>Регистрация (назначение владельца).</li><li>Категоризация.</li><li>Приоритизация (оценка влияния и вероятности повторения).</li><li><b>Расследование:</b> поиск Root Cause (первопричины). Используются методы: 5 почему, диаграмма Исикавы.</li><li>Решение: создание запроса на изменение (RFC) для разработчиков.</li><li>Закрытие (после внедрения исправления и проверки).</li><li>Контроль (наблюдение, не вернулась ли проблема).</li></ol><p><b>Известная ошибка (Known Error):</b> проблема, причина которой найдена, но исправление еще не внедрено. Для нее фиксируется обходное решение, которым пользуется поддержка.</p>` },
+    { title: "Каналы связи", html: `<h3>Каналы связи</h3><p>Канал связи показывает, каким именно способом заказчик обратился в поддержку. Это важно для понимания контекста обращения и выбора способа ответа.</p><table><tr><th>Канал</th><th>Описание</th></tr><tr><td>Email</td><td>Письмо на почту поддержки. Позволяет приложить скриншоты и подробно описать проблему.</td></tr><tr><td>Телефон</td><td>Звонок на горячую линию. Требует оперативного ответа, но может быть менее детальным. Регистратор фиксирует суть разговора.</td></tr><tr><td>Портал самообслуживания</td><td>Заявка, которую пользователь самостоятельно оформил в личном кабинете. Обычно содержит структурированную информацию.</td></tr><tr><td>Чат на сайте</td><td>Онлайн-консультация. Позволяет быстро уточнить детали в диалоге.</td></tr><tr><td>Мессенджер</td><td>Обращение через Telegram, WhatsApp и другие системы. Не всегда официальный канал, но часто используется для быстрых вопросов.</td></tr></table>` },
+    { title: "Важность и срочность. Матрица приоритета", html: `<h3>Матрица</h3><table><tr><th>Важность \\ Срочность</th><th>Высокая</th><th>Средняя</th><th>Низкая</th></tr><tr><td>Высокая</td><td>Критический</td><td>Высокий</td><td>Средний</td></tr><tr><td>Средняя</td><td>Высокий</td><td>Средний</td><td>Низкий</td></tr><tr><td>Низкая</td><td>Средний</td><td>Низкий</td><td>Низкий</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Согласно регламентам компании, для типов обращений <b>«Запрос на обслуживание»</b> и <b>«Консультация»</b> по умолчанию автоматически устанавливается <b>средняя важность</b> и <b>средняя срочность</b> (Приоритет «Средний»). Это связано с тем, что данные обращения не блокируют критически важные бизнес-процессы.</p><p>Однако, если в тексте обращения заказчик <u>явно указывает</u> на жесткие дедлайны, остановку работы или высокую критичность (например, «нужно срочно», «работа встала»), регистратор обязан изменить важность или срочность вручную в соответствии с матрицей.</p>` },
+    { title: "SLA и сроки", html: `<table><tr><th>Приоритет</th><th>Срок реакции</th><th>Время решения</th></tr><tr><td>Критический</td><td>2 часа</td><td>6 часов</td></tr><tr><td>Высокий</td><td>4 часа</td><td>12 часов</td></tr><tr><td>Средний</td><td>8 часов</td><td>24 часа</td></tr><tr><td>Низкий</td><td>24 часа</td><td>32 часа</td></tr></table>` },
+    { title: "Категории и подкатегории", html: `<h3>Категории и подкатегории</h3><p><b>Категория</b> - это крупный модуль или область функционала внутри выбранного продукта.</p><p><b>Подкатегория</b> - это конкретная функция или действие внутри этого модуля. Выбор подкатегории зависит от того, какая категория была выбрана до этого.</p><p style="margin-top: 16px;"><b>Структура категорий по продуктам:</b></p><table><tr><th>Продукт</th><th>Категория</th><th>Возможные подкатегории</th></tr><tr><td rowspan="4"><b>Про.Документы</b></td><td>Документооборот</td><td>Регистрация документов, Согласование документов, Хранение и поиск документов</td></tr><tr><td>Договоры и контрагенты</td><td>Карточки контрагенты, Договоры, Поручения по договорам</td></tr><tr><td>Интеграции и обмен</td><td>Интеграция с 1С, Интеграция с ЭДО, Почтовый обмен</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Продажи</b></td><td>Клиенты и контакты</td><td>Карточка клиента, Контакты и связи, Сегменты и группы</td></tr><tr><td>Сделки и воронка</td><td>Создание и ведение сделок, Этапы воронки, Задачи и напоминания</td></tr><tr><td>Отчёты и аналитика</td><td>Стандартные отчёты, Дашборды, Экспорт данных</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Закупки</b></td><td>Заявки на закупку</td><td>Создание заявки, Согласование заявки, Статусы и маршруты</td></tr><tr><td>Поставщики и каталог</td><td>Карточка поставщика, Каталог товаров/услуг, Оценка поставщиков</td></tr><tr><td>Договоры закупок</td><td>Создание договора, Согласование договора, Исполнение и контроль</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Категория «Стандартные процедуры» присутствует во всех трех продуктах. Она используется для стандартных процедур: выдачи дистрибутивов, доступов, лицензий. Тип обращения в таком случае должен быть «Запрос на обслуживание».</p>` },
+    { title: "Структура карточки обращения", html: `<h3>Структура карточки обращения</h3><table><tr><th>Поле</th><th>Описание</th></tr><tr><td><b>Организация</b></td><td>Наименование организации, от которой поступило обращение. Полное название и описание можно узнать в <span class="kb-link" onclick="goToKbTab('О компании «Про.Софт»')">«Справочнике организаций»</span>.</td></tr><tr><td><b>Контактное лицо</b></td><td>Наименование контактного лица. Указывает, кто именно является инициатором обращения. Список доступных контактов можно посмотреть в «Справочнике организаций», нажав кнопку «Контактные лица».</td></tr><tr><td><b>Канал связи</b></td><td>Откуда поступило обращение (Email, Телефон, Портал, Чат и т.д.). Необходим для понимания контекста и способа ответа. Подробнее о каналах связи можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Каналы связи')">«Каналы связи»</span>.</td></tr><tr><td><b>Заголовок</b></td><td>Краткая суть инцидента или запроса. Обычно заполняется в формате «ошибка + действие, при котором она возникает».</td></tr><tr><td><b>Описание ситуации</b></td><td>Вся информация по обращению, скопированная из формы заказчика.</td></tr><tr><td><b>Тип обращения</b></td><td>Группа (тип), к которой относится обращение: инцидент, запрос на обслуживание или консультация. Подробнее можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Типы обращений')">«Типы обращений»</span>.</td></tr><tr><td><b>Продукт</b></td><td>Программный продукт, с которым возникла проблема или по которому задан вопрос.</td></tr><tr><td><b>Категория</b></td><td>Модуль или область продукта. Зависит от выбранного продукта.</td></tr><tr><td><b>Подкатегория</b></td><td>Конкретный функционал внутри модуля. Зависит от выбранной категории.</td></tr><tr><td><b>Продукты и версии</b></td><td>Список продуктов и их версий, которые используются у заказчика.</td></tr><tr><td><b>Важность</b></td><td>Степень влияния проблемы на бизнес-процессы заказчика.</td></tr><tr><td><b>Срочность</b></td><td>То, как быстро нужно решить проблему.</td></tr><tr><td><b>Номер</b></td><td>Уникальный идентификатор обращения в системе.</td></tr><tr><td><b>Ответственный</b></td><td>Сотрудник поддержки, который взял обращение в работу.</td></tr><tr><td><b>Состояние обращения</b></td><td>Текущий статус обращения.</td></tr><tr><td><b>Код закрытия</b></td><td>Причина, по которой обращение было закрыто.</td></tr><tr><td><b>Приоритет</b></td><td>Рассчитывается автоматически на основе Важности и Срочности по <span class="kb-link" onclick="goToKbTab('Важность и срочность. Матрица приоритета')">матрице приоритетов</span>.</td></tr><tr><td><b>Срок реакции</b></td><td>Время, за которое поддержка должна отреагировать на обращение.</td></tr><tr><td><b>Время решения</b></td><td>Время, отведенное на полное решение проблемы.</td></tr></table>` },
+    { title: "Порядок регистрации", html: `<ol><li>Прочитать форму</li><li>При необходимости запросить уточнение у заказчика</li><li>Проверить «Справочник организаций»</li><li>Выбрать тип обращения</li><li>Определить продукт/категорию/подкатегорию</li><li>Проверить продукты и версии</li><li>Оценить важность и срочность</li><li>Зарегистрировать</li></ol>` },
+    { title: "Коды закрытия", html: `<ul><li>Решено</li><li>Решено инициатором</li><li>Отказано</li><li>Недостаточно информации</li><li>Дубликат</li><li>Передано</li></ul>` },
+    { title: "Частые ошибки", html: `<ul><li>Путаница важности и срочности</li><li>Неверный продукт/категория/подкатегория</li><li>Неверная версия</li><li>Не выбран тип обращения</li></ul>` },
+    { title: "Как работать на 2-й линии", html: KB_L3[0].html },
+    { title: "Диагностика: что читать в логах", html: KB_L3[1].html },
+    { title: "Обходное и радикальное решение", html: KB_L3[2].html },
+    { title: "Known Error (известная ошибка)", html: KB_L3[3].html },
+    { title: "Problem Record (карточка проблемы)", html: KB_L3[4].html },
+    { title: "Методы расследования: 5 почему", html: KB_L3[5].html },
+    { title: "Методы расследования: Исикава", html: KB_L3[6].html },
+    { title: "Дубликаты и повторные инциденты", html: KB_L3[7].html }
+  ];
+}
 
 function buildKb() {
   const menu = document.getElementById("kb-menu");
@@ -1079,4 +940,69 @@ function openKb() { showModal("modal-kb"); }
 function switchKbTab(title) { const buttons = document.querySelectorAll(".kb-menu-item"); for (const btn of buttons) { if (btn.textContent === title) { btn.click(); break; } } }
 function goToKbTab(title) { openKb(); switchKbTab(title); }
 
-document.addEventListener("DOMContentLoaded", init);
+// Создание и применение снимков состояния
+function makeSnapshot() {
+  if (state.level === 1) {
+    return { level: 1, results: state.results, total: TICKETS.length };
+  }
+  if (state.level === 2) {
+    return { level: 2, results: state.resultsL2, total: TICKETS_L2.length };
+  }
+  return { level: 3, results: state.resultsL3, createdProblems: state.createdProblems, total: TICKETS_L3.length };
+}
+
+function applySnapshot(snap) {
+  if (!snap) return false;
+  if (snap.level === 1) state.results = snap.results || {};
+  else if (snap.level === 2) state.resultsL2 = snap.results || {};
+  else {
+    state.resultsL3 = snap.results || {};
+    state.createdProblems = snap.createdProblems || [];
+  }
+  return true;
+}
+
+const LEVELS = [
+  { id: 1, title: "Уровень 1 — Регистрация обращений", desc: "Разбор входящих, заполнение карточки, приоритизация.", total: () => TICKETS.length },
+  { id: 2, title: "Уровень 2 — Распределение", desc: "Назначение ответственных, эскалации.", total: () => TICKETS_L2.length },
+  { id: 3, title: "Уровень 3 — Решение инцидентов", desc: "Диагностика, Known Error, Problem Management.", total: () => TICKETS_L3.length }
+];
+
+function renderLevelCards() {
+  const summary = ProgressStore.getSummary();
+  const wrap = document.getElementById("level-cards");
+  wrap.innerHTML = "";
+  for (const lvl of LEVELS) {
+    const total = lvl.total();
+    const s = summary["level" + lvl.id];
+    const done = s ? s.done : 0;
+    const badge = s && s.finishedAt ? " · завершён" : "";
+
+    const card = document.createElement("div");
+    card.className = "level-card";
+    card.innerHTML = `
+      <div class="level-title">${lvl.title}</div>
+      <div class="level-desc">${lvl.desc}</div>
+      <div class="level-meta">${done} / ${total} обработано${badge}</div>
+      <button class="btn primary" data-level="${lvl.id}">Начать</button>
+    `;
+    card.querySelector("button").addEventListener("click", () => startLevel(lvl.id));
+    wrap.appendChild(card);
+  }
+}
+
+function startLevel(n) {
+  resetState();
+  state.level = n;
+  const saved = ProgressStore.load(n);
+  if (saved) applySnapshot(saved);
+
+  renderQueue();
+  if (n === 1) { showScreen("screen-queue"); return; }
+  if (n === 2) { showScreen("screen-queue-l2"); showModal("modal-l2-intro"); return; }
+  showScreen("screen-queue-l3"); showModal("modal-l3-intro");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  window.__initPromise__ = init();
+});

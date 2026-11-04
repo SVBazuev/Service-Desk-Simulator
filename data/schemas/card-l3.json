@@ -1,0 +1,14 @@
+{
+    "fields": [
+        { "id": "root", "label": "Корневая причина (своими словами) *", "type": "textarea", "required": true },
+        { "id": "workaround", "label": "Обходное решение (workaround) *", "type": "select", "required": true, "source": "WORKAROUNDS" },
+        { "id": "radical", "label": "Радикальное решение *", "type": "select", "required": true, "source": "RADICAL" },
+        { "id": "outcome", "label": "Исход обращения *", "type": "select", "required": true, "options": [
+            { "value": "resolved", "label": "Решено (инцидент закрыт, проблемы нет)" },
+            { "value": "new_problem", "label": "Новая проблема (требуется завести Problem Record)" },
+            { "value": "known_error", "label": "Известная ошибка (привязка к существующей проблеме, ждем фикс)" },
+            { "value": "fixed_problem", "label": "Исправленная проблема (привязка к закрытой проблеме, рецидив)" }
+            ]
+        }
+    ]
+}

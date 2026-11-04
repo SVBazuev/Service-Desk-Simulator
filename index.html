@@ -13,14 +13,22 @@
       <h2>ООО «Про.Софт»</h2>
       <p>Добро пожаловать в Service Desk Simulator</p>
       <p>На 1 уровне вы - инженер технической поддержки. Ваша задача - разобрать папку потока обращений. Читайте первичные сообщения, при необходимости задавайте уточняющие вопросы заказчикам и заполняйте карточки в соответствии с правилами работы Service Desk.</p>
-      <button id="btn-start" class="btn primary">Начать работу</button>
+      <button id="btn-to-level-select" class="btn primary">Выбрать уровень</button>
     </div>
   </section>
-
+  <section id="screen-level-select" class="screen">
+    <header class="topbar">
+      <div class="topbar-title">Выбор уровня</div>
+      <div class="topbar-actions">
+        <button id="btn-level-reset" class="btn">Сбросить прогресс</button>
+      </div>
+    </header>
+    <main class="level-cards" id="level-cards"></main>
+  </section>
   <section id="screen-queue" class="screen">
     <header class="topbar">
       <div class="topbar-title">Папка потока обращений (Уровень 1)</div>
-      <div class="topbar-info">Зарегистрировано: <span id="q-done">0</span> / 11</div>
+      <div class="topbar-info">Зарегистрировано: <span id="q-done">0</span> / <span id="q-total">0</span></div>
       <div class="topbar-actions">
         <button id="btn-org-list-queue" class="btn">Справочник организаций</button>
         <button id="btn-emp-list-queue" class="btn">Справочник сотрудников</button>
@@ -55,12 +63,12 @@
               <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val" id="frm-chan"></span></div>
               <div class="kv-row"><span class="kv-key">Заголовок</span><span class="kv-val" id="frm-title"></span></div>
             </div>
-            
+
             <div class="text-block">
               <div class="text-block-title">Текст обращения</div>
               <div class="text-block-content" id="frm-text"></div>
             </div>
-            
+
             <div id="wrap-clarify-btn" style="margin-top: 10px;">
               <button id="btn-clarify" class="btn primary" style="width: 100%; border: 1px dashed #93c5fd; background: #eff6ff; color: #1e40af;">Написать заказчику и уточнить детали</button>
             </div>
@@ -79,43 +87,12 @@
             <div class="panel-title">Карточка обращения</div>
           </header>
           <div class="panel-body">
-            <div class="form-grid">
-              <label class="form-field">
-                <span class="form-label">Организация</span>
-                <select id="card-org"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Контактное лицо</span>
-                <select id="card-cont"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Канал связи</span>
-                <select id="card-chan"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Заголовок</span>
-                <input id="card-title" type="text">
-              </label>
-              <label class="form-field full">
-                <span class="form-label">Описание ситуации</span>
-                <textarea id="card-desc"></textarea>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Тип обращения *</span>
-                <select id="card-type"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Продукт *</span>
-                <select id="card-prod"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Категория *</span>
-                <select id="card-cat"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Подкатегория *</span>
-                <select id="card-sub"></select>
-              </label>
+
+            <!-- ДИНАМИЧЕСКАЯ ФОРМА -->
+            <div class="form-grid" id="dynamic-form-container"></div>
+
+            <!-- БЛОК ВЕРСИЙ (вынесен отдельно) -->
+            <div style="margin-top: 12px;">
               <label class="form-field full">
                 <span class="form-label">Продукты и версии</span>
                 <div id="ver-list" class="ver-list"></div>
@@ -127,33 +104,6 @@
                   </div>
                 </div>
               </label>
-              <label class="form-field">
-                <span class="form-label">Важность *</span>
-                <select id="card-imp"></select>
-              </label>
-              <label class="form-field">
-                <span class="form-label">Срочность *</span>
-                <select id="card-urg"></select>
-              </label>
-            </div>
-
-            <div id="l2-assignment-block" style="display: none; margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: #f8fafc;">
-              <div class="form-grid">
-                <label class="form-field full">
-                  <span class="form-label" style="font-weight: 600; color: var(--primary);">Распределение обращения (Уровень 2)</span>
-                </label>
-                <label class="form-field full">
-                  <span class="form-label">Назначить ответственного *</span>
-                  <select id="card-assignee-l2"></select>
-                </label>
-                <label class="form-field full">
-                  <span class="form-label">Комментарий / Задача для исполнителя *</span>
-                  <select id="card-comment-l2"></select>
-                </label>
-              </div>
-              <div class="prio-hint" style="margin-top: 12px; background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12px;">
-                <b>Внимание:</b> Проверьте статус сотрудника (Справочник сотрудников). Если вопрос касается SLA или договоров - эскалируйте менеджеру. Также учитывайте загруженность сотрудников (сколько обращений уже в работе).
-              </div>
             </div>
 
             <div id="prio-hint" class="prio-hint" style="display: none;">
@@ -175,7 +125,7 @@
                 <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" id="auto-sol">-</div></div>
               </div>
             </div>
-            
+
           </div>
           <footer class="panel-footer">
             <button id="btn-cancel" class="btn">Отменить</button>
@@ -190,7 +140,7 @@
   <section id="screen-queue-l2" class="screen">
     <header class="topbar">
       <div class="topbar-title">Папка потока (Уровень 2 - Тимлид)</div>
-      <div class="topbar-info">Распределено: <span id="q-done-l2">0</span> / 8</div>
+      <div class="topbar-info">Распределено: <span id="q-done-l2">0</span> / <span id="q-total-l2">0</span></div>
       <div class="topbar-actions">
         <button id="btn-org-list-queue-l2" class="btn">Справочник организаций</button>
         <button id="btn-emp-list-queue-l2" class="btn">Справочник сотрудников</button>
@@ -204,7 +154,7 @@
   <section id="screen-queue-l3" class="screen">
     <header class="topbar">
       <div class="topbar-title">Рабочая очередь инженера (Уровень 3 - Инженер 2 линии)</div>
-      <div class="topbar-info">Решено: <span id="q-done-l3">0</span> / <span id="q-total-l3">10</span></div>
+      <div class="topbar-info">Решено: <span id="q-done-l3">0</span> / <span id="q-total-l3">0</span></div>
       <div class="topbar-actions">
         <button id="btn-org-list-queue-l3" class="btn">Справочник организаций</button>
         <button id="btn-emp-list-queue-l3" class="btn">Справочник сотрудников</button>
@@ -327,7 +277,6 @@
                 </select>
               </label>
 
-              <!-- Новое поле для привязки к существующей проблеме (для known_error и fixed_problem) -->
               <label class="form-field full" id="l3-problem-link-block" style="display: none;">
                 <span class="form-label">Связанная проблема *</span>
                 <select id="l3-problem-link"></select>
@@ -392,8 +341,7 @@
     <header class="topbar">
       <div class="topbar-title" id="res-title">Итоги работы</div>
       <div class="topbar-actions">
-        <button id="btn-next-level-1" class="btn primary" style="display: none;">Перейти на уровень 2</button>
-        <button id="btn-next-level-2" class="btn primary" style="display: none;">Перейти на уровень 3</button>
+        <button id="btn-back-to-level-select" class="btn">К выбору уровня</button>
         <button id="btn-res-restart" class="btn">На главную</button>
       </div>
     </header>
@@ -417,7 +365,7 @@
       <div class="modal-body" style="font-size: 14px; line-height: 1.6;">
         <p>Добро пожаловать на позицию <b>Тимлида команды Бета</b>!</p>
         <p>Теперь вы не просто регистрируете обращения, а <b>распределяете их между сотрудниками</b>. Ваша задача - правильно определить, кто должен заниматься каждым обращением, и какую задачу ему поставить.</p>
-        
+
         <p style="margin-top: 12px;"><b>Что нужно делать:</b></p>
         <ul style="padding-left: 20px;">
           <li>Изучите обращение.</li>
@@ -427,7 +375,7 @@
           <li>Выберите <b>Комментарий / Задачу</b> для исполнителя (например, запросить анализ, взять в работу или связаться с заказчиком по вопросам сроков).</li>
           <li>Нажмите <b>«Изменить ответственного»</b>, чтобы сохранить решение.</li>
         </ul>
-        
+
         <p style="margin-top: 12px; color: var(--sub); font-size: 13px;">
           <i>Подсказка:</i> Если вопрос касается сроков, договоров или эскалации (например, просят продлить SLA), его нужно передавать <b>менеджеру</b>, а не инженерам техподдержки. Если нужен глубокий анализ кода - <b>3-й линии (L3)</b>.
         </p>
@@ -545,9 +493,14 @@
     </div>
   </div>
 
-  <script src="js/data.js"></script>
+  <script src="js/data-bundle.js"></script>
+  <script src="js/core/state.js"></script>
+  <script src="js/core/dataStore.js"></script>
+  <script src="js/core/formRenderer.js"></script>
+  <script src="js/core/validator.js"></script>
+  <script src="js/core/progressStore.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/app.js"></script>
-  <script src="js/test.js"></script>
+  <script src="js/autotests.js"></script>
 </body>
 </html>

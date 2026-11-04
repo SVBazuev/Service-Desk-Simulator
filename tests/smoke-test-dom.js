@@ -1,0 +1,202 @@
+﻿const fs = require("fs");
+const vm = require("vm");
+const path = require("path"); 
+const { JSDOM } = require("jsdom");
+
+const ROOT = path.join(__dirname, "..");
+const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://localhost/" });
+const { window } = dom;
+const doc = window.document;
+
+// 1. Список всех JS файлов, включая сгенерированный бандл данных и новые модули
+const jsFiles = [
+  "js/data-bundle.js",
+  "js/core/state.js",
+  "js/core/dataStore.js",
+  "js/core/formRenderer.js",
+  "js/core/validator.js",
+  "js/core/progressStore.js",
+  "js/utils.js",
+  "js/app.js",
+  "js/autotests.js" // переименованный test.js
+];
+
+const allJs = jsFiles
+  .map(f => fs.readFileSync(path.join(ROOT, f), "utf8"))
+  .join("\n;\n");
+
+// 2. Настраиваем контекст (песочницу)
+const sandbox = {
+  window,
+  document: doc,
+  navigator: window.navigator,
+  location: window.location,
+  localStorage: {
+    // Мокаем localStorage, чтобы ProgressStore не падал при тестах
+    store: {},
+    getItem(key) { return this.store[key] || null; },
+    setItem(key, value) { this.store[key] = String(value); },
+    removeItem(key) { delete this.store[key]; },
+    clear() { this.store = {}; }
+  },
+  alert: () => {},
+  confirm: () => true,
+  prompt: () => "",
+  console,
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
+  JSON,
+  Math,
+  Date,
+  Set,
+  Map,
+  Array,
+  Object,
+  String,
+  Number,
+  Boolean,
+  RegExp,
+  Error,
+  parseInt,
+  parseFloat,
+  isNaN,
+};
+sandbox.globalThis = sandbox;
+
+vm.createContext(sandbox);
+vm.runInContext(allJs, sandbox, { filename: "game.js" });
+
+// Доступ к переменным из хоста
+const ev = (code) => vm.runInContext(code, sandbox);
+
+let fail = 0;
+const err = (m) => { console.error("FAIL:", m); fail++; };
+
+// 3. Запуск тестов
+async function runTest() {
+  try {
+    // Инициализация приложения
+    ev("init()");
+
+    // Эмуляция перехода на 3-й уровень через экран выбора
+    doc.getElementById("btn-to-level-select").click();
+    doc.querySelector('[data-level="3"]').click();
+    ev("hideModal('modal-l3-intro')");
+
+    if (!doc.getElementById("screen-queue-l3").classList.contains("active")) {
+      err("не открыт экран очереди L3");
+    }
+
+    const tickets = ev("TICKETS_L3");
+
+    // Прогон всех тикетов
+    for (const t of tickets) {
+      ev(`openL3Work('${t.id}')`);
+      ev("l3RequestClarify()");
+
+      ev(`document.getElementById('l3-root').value = ${JSON.stringify("причина: " + t.rootKeywords.join(", "))}`);
+      ev(`document.getElementById('l3-workaround').value = '${t.workaroundCorrect}'`);
+      ev(`document.getElementById('l3-radical').value = '${t.radicalCorrect}'`);
+      ev(`document.getElementById('l3-outcome').value = '${t.outcome.correct}'`);
+      ev("onL3Outcome()");
+
+      if (t.problem) {
+        ev(`
+          document.querySelectorAll('.l3-prob-inc-check').forEach(c => c.checked = true);
+          document.getElementById('l3-prob-impact').value = ${JSON.stringify(t.problem.impact)};
+          document.getElementById('l3-prob-prob').value = ${JSON.stringify(t.problem.prob)};
+          document.getElementById('l3-prob-owner').value = ${JSON.stringify(t.problem.owner)};
+          document.getElementById('l3-prob-method').value = ${JSON.stringify(t.problem.method)};
+          document.getElementById('l3-prob-rfc').value = (PROBLEMS.find(p => p.id === ${JSON.stringify(t.problem.record)})?.rfc) || ${JSON.stringify("исправить: " + t.rootKeywords.join(", "))};
+        `);
+      } else if (t.linkedProblemId) {
+        ev(`document.getElementById('l3-problem-link').value = '${t.linkedProblemId}'`);
+      }
+
+      if (t.duplicateOf) {
+        ev(`document.getElementById('l3-dup-of').value = '${t.duplicateOf}'`);
+      }
+
+      ev("l3Validate()");
+      ev("l3Submit()");
+      ev("hideModal('modal-reg')");
+
+      const res = ev(`state.resultsL3['${t.id}']`);
+      if (!res) {
+        err(t.id + ": результат не сохранён");
+      } else if (!res.ok) {
+        err(t.id + ": эталонный ответ не прошёл. Ошибки: " + res.errs.join(", "));
+        for (const c of res.comparison) {
+          if (c.isError) console.error("   - " + c.field + ": " + c.value + " | нужно: " + c.expected);
+        }
+      }
+    }
+
+    // Проверка счетчиков
+    ev("renderQueue()");
+    const done = doc.getElementById("q-done-l3").textContent;
+    if (done !== String(tickets.length)) {
+      err(`счётчик очереди: ${done} вместо ${tickets.length}`);
+    }
+
+    // Переход к результатам
+    doc.getElementById("btn-finish-l3").click();
+    if (!doc.getElementById("screen-res").classList.contains("active")) {
+      err("не открыт экран результатов");
+    }
+    const rows = doc.querySelectorAll("#res-table tbody tr").length;
+    if (rows !== tickets.length) {
+      err(`в итоговой таблице строк: ${rows} вместо ${tickets.length}`);
+    }
+    const okCount = doc.querySelectorAll("#res-table .tag.ok").length;
+    console.log(`INFO: 'Успех' в итогах: ${okCount} / ${tickets.length}`);
+
+    // Проверка реестра проблем
+    ev("openProblems()");
+    const probCards = doc.querySelectorAll("#problems-body > div").length;
+    if (probCards !== 3) {
+      err(`карточек проблем: ${probCards} вместо 3`);
+    }
+    ev("hideModal('modal-problems')");
+
+    // Негативный тест
+    ev("state.level = 3");
+    ev(`openL3Work('TK-302')`);
+    ev(`document.getElementById('l3-root').value = 'неизвестно'`);
+    ev(`document.getElementById('l3-workaround').value = '1'`);
+    ev(`document.getElementById('l3-radical').value = '1'`);
+    ev(`document.getElementById('l3-outcome').value = 'new_problem'`);
+    ev("onL3Outcome()");
+    ev("l3Validate()");
+    ev("l3Submit()");
+    ev("hideModal('modal-reg')");
+
+    const res2 = ev(`state.resultsL3['TK-302']`);
+    if (!res2 || res2.errs.length < 2) {
+      err(`негативный тест: сломанный ответ не пойман (errs=${res2 ? res2.errs.length : 0})`);
+    }
+
+    // Автотесты L3 (встроенные в игру)
+    ev("runAutotestsL3()");
+    ev("hideModal('modal-autotest')");
+    const atOk = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
+    const atBad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
+    const expectedAutotests = tickets.length * 2;
+    console.log(`Автотесты L3: ${atOk} OK / ${atBad} BAD (ожидалось ${expectedAutotests} OK / 0 BAD)`);
+    if (atBad > 0) {
+      err(`автотесты L3 провалились: ${atBad} BAD`);
+    }
+
+    console.log(fail === 0 ? "PASS: все проверки L3 пройдены" : `FAIL: ${fail} ошибок`);
+    process.exit(fail === 0 ? 0 : 1);
+
+  } catch (e) {
+    console.error("КРИТИЧЕСКАЯ ОШИБКА ТЕСТА:", e);
+    process.exit(1);
+  }
+}
+
+runTest();
