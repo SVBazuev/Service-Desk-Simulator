@@ -52,24 +52,14 @@ function init() {
   document.getElementById("btn-finish-l2").addEventListener("click", () => showResults(2));
   document.getElementById("btn-start-l2-work").addEventListener("click", () => { hideModal("modal-l2-intro"); showScreen("screen-queue-l2"); });
 
-  document.getElementById("btn-start-l3-work").addEventListener("click", () => { hideModal("modal-l3-intro"); showScreen("screen-queue-l3"); });
-  document.getElementById("btn-finish-l3").addEventListener("click", () => showResults(3));
-
   document.getElementById("btn-l3-clarify").addEventListener("click", l3RequestClarify);
   document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
   document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
   document.getElementById("btn-back-queue-l3").addEventListener("click", l3GoBack);
-  document.getElementById("l3-root").addEventListener("input", l3Validate);
-  document.getElementById("l3-workaround").addEventListener("change", l3Validate);
-  document.getElementById("l3-radical").addEventListener("change", l3Validate);
-  document.getElementById("l3-outcome").addEventListener("change", onL3Outcome);
-  document.getElementById("l3-prob-impact").addEventListener("change", l3Validate);
-  document.getElementById("l3-prob-prob").addEventListener("change", l3Validate);
-  document.getElementById("l3-prob-owner").addEventListener("change", l3Validate);
-  document.getElementById("l3-prob-method").addEventListener("change", l3Validate);
-  document.getElementById("l3-prob-rfc").addEventListener("input", l3Validate);
+
+  // Поля L3 теперь рендерятся динамически (слушатели вешает FormRenderer).
+  // Оставляем только дубликаты (они статичны в HTML):
   document.getElementById("l3-dup-of").addEventListener("change", l3Validate);
-  document.getElementById("l3-problem-link").addEventListener("change", l3Validate);
 
   const goBack12 = () => { state.currentId = null; if (state.level === 3) { renderQueue(); showScreen("screen-queue-l3"); return; } renderQueue(); showScreen(state.level === 1 ? "screen-queue" : "screen-queue-l2"); };
   const goBack = () => { state.currentId = null; renderQueue(); showScreen(state.level === 1 ? "screen-queue" : "screen-queue-l2"); };
@@ -513,79 +503,40 @@ function l3RenderDiagTabs() {
   }
 }
 
-function onL3Outcome() {
-  const t = getTicket(state.currentId);
-  const v = document.getElementById("l3-outcome").value;
-  const block = document.getElementById("l3-problem-block");
-  const linkBlock = document.getElementById("l3-problem-link-block");
-  const linkSel = document.getElementById("l3-problem-link");
+function l3Validate() {
+  const t = TICKETS_L3.find(x => x.id === state.currentId);
+  const hint = document.getElementById("l3-submit-hint");
+  const btn = document.getElementById("btn-l3-submit");
+  if (!t) return;
 
-  if (v === "new_problem") {
-    block.style.display = "block";
-    linkBlock.style.display = "none";
-    document.getElementById("l3-problem-link").value = "";
-    document.getElementById("l3-prob-impact").value = "";
-    document.getElementById("l3-prob-prob").value = "";
-    document.getElementById("l3-prob-owner").value = "";
-    document.getElementById("l3-prob-method").value = "";
-    document.getElementById("l3-prob-rfc").value = "";
-    document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = false);
-  } else if (v === "known_error" || v === "fixed_problem") {
-    block.style.display = "none";
-    linkBlock.style.display = "block";
-    document.getElementById("l3-prob-impact").value = "";
-    document.getElementById("l3-prob-prob").value = "";
-    document.getElementById("l3-prob-owner").value = "";
-    document.getElementById("l3-prob-method").value = "";
-    document.getElementById("l3-prob-rfc").value = "";
-    document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = false);
+  const schema = DataStore.getSchemas()[3];
+  const formData = FormRenderer.getFormData("l3-dynamic-form", schema);
 
-    linkSel.innerHTML = "";
-    const def = document.createElement("option");
-    def.value = ""; def.textContent = "Выберите проблему...";
-    linkSel.appendChild(def);
+  const missing = [];
+  // Проходим по полям схемы
+  for (const field of schema.fields) {
+    if (!field.required) continue;
 
-    for (const p of PROBLEMS) {
-      if (v === "known_error" && p.status !== "known_error") continue;
-      if (v === "fixed_problem" && p.status !== "resolved") continue;
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      const statText = p.status === "resolved" ? "🟢 ИСПРАВЛЕНА" : "🔴 В РАБОТЕ (ждем фикс)";
-      opt.textContent = `${p.id} [${statText}] • ${p.title}`;
-      linkSel.appendChild(opt);
+    if (field.type === 'composite') {
+      // Если блок видим (showIf), проверяем вложенные
+      const fieldset = document.getElementById('field-' + field.id);
+      if (fieldset && fieldset.style.display !== 'none') {
+        for (const sub of field.fields) {
+          if (sub.required && (!formData[sub.id] || formData[sub.id].length === 0)) missing.push(sub.label);
+        }
+      }
+    } else {
+      if (!formData[field.id] || formData[field.id].length === 0) missing.push(field.label);
     }
-  } else {
-    block.style.display = "none";
-    linkBlock.style.display = "none";
-    document.getElementById("l3-problem-link").value = "";
-    document.getElementById("l3-prob-impact").value = "";
-    document.getElementById("l3-prob-prob").value = "";
-    document.getElementById("l3-prob-owner").value = "";
-    document.getElementById("l3-prob-method").value = "";
-    document.getElementById("l3-prob-rfc").value = "";
-    document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = false);
   }
-  l3Validate();
-}
 
-function l3RenderProblemBlock(t) {
-  const wrap = document.getElementById("l3-prob-incidents");
-  wrap.innerHTML = "";
-  if (!t.problem) return;
-
-  const problemDef = PROBLEMS.find(p => p.id === t.problem.record);
-  const incidentsToLink = problemDef ? problemDef.incidentsLinked : [t.id];
-
-  for (const incId of incidentsToLink) {
-    const inc = TICKETS_L3.find(x => x.id === incId);
-    if (!inc) continue;
-    const row = document.createElement("label");
-    row.style.display = "flex";
-    row.style.gap = "8px";
-    row.style.alignItems = "center";
-    row.style.fontSize = "13px";
-    row.innerHTML = `<input type="checkbox" value="${incId}" class="l3-prob-inc-check"><span>${incId} • ${inc.title}</span>`;
-    wrap.appendChild(row);
+  btn.disabled = missing.length > 0;
+  if (missing.length > 0) {
+    hint.style.display = "block";
+    hint.innerHTML = "Заполните: " + missing.join(", ");
+  } else {
+    hint.style.display = "none";
+    hint.textContent = "";
   }
 }
 
@@ -600,53 +551,6 @@ function l3GoBack() {
   document.getElementById("l3-clarify-text").textContent = "";
   renderQueue();
   showScreen("screen-queue-l3");
-}
-
-function l3Validate() {
-  const t = getTicket(state.currentId);
-  const hint = document.getElementById("l3-submit-hint");
-  if (!t) return;
-
-  const root = document.getElementById("l3-root").value.trim();
-  const wa = document.getElementById("l3-workaround").value;
-  const rad = document.getElementById("l3-radical").value;
-  const out = document.getElementById("l3-outcome").value;
-  const missing = [];
-
-  if (root.length < 10) missing.push("корневая причина (не менее 10 символов)");
-  if (!wa) missing.push("обходное решение");
-  if (!rad) missing.push("радикальное решение");
-
-  if (out === "new_problem") {
-    const impact = document.getElementById("l3-prob-impact").value;
-    const prob = document.getElementById("l3-prob-prob").value;
-    const owner = document.getElementById("l3-prob-owner").value;
-    const method = document.getElementById("l3-prob-method").value;
-    const rfc = document.getElementById("l3-prob-rfc").value.trim();
-    const checks = document.getElementById("l3-prob-incidents").querySelectorAll(".l3-prob-inc-check:checked");
-
-    if (!impact) missing.push("влияние проблемы");
-    if (!prob) missing.push("вероятность повторения");
-    if (!owner) missing.push("владелец проблемы");
-    if (!method) missing.push("метод расследования");
-    if (rfc.length < 15) missing.push("RFC (не менее 15 символов)");
-    if (checks.length === 0) missing.push("связанные инциденты (отметьте хотя бы одно)");
-  }
-
-  if (out === "known_error" || out === "fixed_problem") {
-    const linkedProb = document.getElementById("l3-problem-link").value;
-    if (!linkedProb) missing.push("связанная проблема");
-  }
-
-  const btn = document.getElementById("btn-l3-submit");
-  btn.disabled = missing.length > 0;
-  if (missing.length > 0) {
-    hint.style.display = "block";
-    hint.innerHTML = "Заполните: " + missing.join(", ");
-  } else {
-    hint.style.display = "none";
-    hint.textContent = "";
-  }
 }
 
 function openL3Work(id) {
@@ -682,37 +586,17 @@ function openL3Work(id) {
     dupSel.appendChild(opt);
   }
 
+  // --- ДИНАМИЧЕСКИЙ РЕНДЕРИНГ ФОРМЫ ---
+  const schema = DataStore.getSchemas()[3];
+  FormRenderer.render("l3-dynamic-form", schema, { ticket: t });
+
+  // --- ОБНОВЛЕНИЕ RO-БЛОКА ---
   document.getElementById("l3-ro-num").textContent = t.id;
   document.getElementById("l3-ro-prod").textContent = t.ver;
   document.getElementById("l3-ro-imp").textContent = t.imp + " / " + t.urg;
   document.getElementById("l3-ro-sla").textContent = m ? (m.react + " / " + m.sol) : "-";
 
-  document.getElementById("l3-root").value = "";
-  fillSelect(document.getElementById("l3-workaround"), (t.workarounds || []).map((w, i) => ({ value: String(i), label: w })));
-  fillSelect(document.getElementById("l3-radical"), (t.radical || []).map((w, i) => ({ value: String(i), label: w })));
-  document.getElementById("l3-problem-link").innerHTML = "";
-  document.getElementById("l3-problem-link-block").style.display = "none";
-  document.getElementById("l3-prob-prob").value = "";
-  fillSelect(document.getElementById("l3-prob-owner"), DataStore.getEmployeesL3().map(e => ({ value: e.id, label: e.name + " (" + e.role + ")" })));
-  fillSelect(document.getElementById("l3-prob-method"), PROBLEM_METHODS.map(m => ({ value: m, label: m })));
-  document.getElementById("l3-prob-rfc").value = "";
-
-  // --- НОВАЯ ЛОГИКА: Фильтрация доступных исходов ---
-  const outcomeSelect = document.getElementById("l3-outcome");
-  // Восстанавливаем все опции перед фильтрацией
-  Array.from(outcomeSelect.options).forEach(opt => opt.style.display = "");
-  // Если сценарий не предполагает создание проблемы (t.problem === null), скрываем эту опцию
-  if (!t.problem) {
-    const newProblemOpt = Array.from(outcomeSelect.options).find(opt => opt.value === "new_problem");
-    if (newProblemOpt) newProblemOpt.style.display = "none";
-  }
-  outcomeSelect.value = ""; // Сбрасываем выбор
-  // -------------------------------------------------
-
   l3RenderDiagTabs();
-  l3RenderProblemBlock(t);
-  onL3Outcome();
-
   showScreen("screen-work-l3");
   l3Validate();
 }
@@ -721,22 +605,12 @@ function l3Submit() {
   const t = TICKETS_L3.find(x => x.id === state.currentId);
   if (!t) return;
 
-  const formData = {
-    root: document.getElementById("l3-root").value.trim(),
-    workaround: document.getElementById("l3-workaround").value,
-    radical: document.getElementById("l3-radical").value,
-    outcome: document.getElementById("l3-outcome").value,
-    impact: document.getElementById("l3-prob-impact").value,
-    prob: document.getElementById("l3-prob-prob").value,
-    owner: document.getElementById("l3-prob-owner").value,
-    method: document.getElementById("l3-prob-method").value,
-    rfc: document.getElementById("l3-prob-rfc").value.trim(),
-    checked: Array.from(document.querySelectorAll(".l3-prob-inc-check:checked")).map(x => x.value),
-    linkedProb: document.getElementById("l3-problem-link").value,
-    dupVal: document.getElementById("l3-dup-of").value
-  };
-
   const schema = DataStore.getSchemas()[3];
+  const formData = FormRenderer.getFormData("l3-dynamic-form", schema);
+
+  // Специфичные поля (дубликат)
+  formData.dupVal = document.getElementById("l3-dup-of").value;
+
   const result = Validator.validate(schema, t, formData);
   state.resultsL3[t.id] = result;
 

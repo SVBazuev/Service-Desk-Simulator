@@ -1,6 +1,6 @@
 ﻿const fs = require("fs");
 const vm = require("vm");
-const path = require("path"); 
+const path = require("path");
 const { JSDOM } = require("jsdom");
 
 const ROOT = path.join(__dirname, "..");
@@ -63,6 +63,8 @@ const sandbox = {
   parseInt,
   parseFloat,
   isNaN,
+  Event: window.Event,
+  CustomEvent: window.CustomEvent
 };
 sandbox.globalThis = sandbox;
 
@@ -97,23 +99,25 @@ async function runTest() {
       ev(`openL3Work('${t.id}')`);
       ev("l3RequestClarify()");
 
-      ev(`document.getElementById('l3-root').value = ${JSON.stringify("причина: " + t.rootKeywords.join(", "))}`);
-      ev(`document.getElementById('l3-workaround').value = '${t.workaroundCorrect}'`);
-      ev(`document.getElementById('l3-radical').value = '${t.radicalCorrect}'`);
-      ev(`document.getElementById('l3-outcome').value = '${t.outcome.correct}'`);
-      ev("onL3Outcome()");
+      ev(`document.getElementById('card-root').value = ${JSON.stringify("причина: " + t.rootKeywords.join(", "))}`);
+      ev(`document.getElementById('card-workaround').value = '${t.workaroundCorrect}'`);
+      ev(`document.getElementById('card-radical').value = '${t.radicalCorrect}'`);
+      ev(`document.getElementById('card-outcome').value = '${t.outcome.correct}'`);
+
+      // Вызываем change, чтобы сработали showIf (видимость полей)
+      ev(`document.getElementById('card-outcome').dispatchEvent(new Event('change', { bubbles: true }))`);
 
       if (t.problem) {
         ev(`
           document.querySelectorAll('.l3-prob-inc-check').forEach(c => c.checked = true);
-          document.getElementById('l3-prob-impact').value = ${JSON.stringify(t.problem.impact)};
-          document.getElementById('l3-prob-prob').value = ${JSON.stringify(t.problem.prob)};
-          document.getElementById('l3-prob-owner').value = ${JSON.stringify(t.problem.owner)};
-          document.getElementById('l3-prob-method').value = ${JSON.stringify(t.problem.method)};
-          document.getElementById('l3-prob-rfc').value = (PROBLEMS.find(p => p.id === ${JSON.stringify(t.problem.record)})?.rfc) || ${JSON.stringify("исправить: " + t.rootKeywords.join(", "))};
+          document.getElementById('card-impact').value = ${JSON.stringify(t.problem.impact)};
+          document.getElementById('card-prob').value = ${JSON.stringify(t.problem.prob)};
+          document.getElementById('card-owner').value = ${JSON.stringify(t.problem.owner)};
+          document.getElementById('card-method').value = ${JSON.stringify(t.problem.method)};
+          document.getElementById('card-rfc').value = (PROBLEMS.find(p => p.id === ${JSON.stringify(t.problem.record)})?.rfc) || ${JSON.stringify("исправить: " + t.rootKeywords.join(", "))};
         `);
       } else if (t.linkedProblemId) {
-        ev(`document.getElementById('l3-problem-link').value = '${t.linkedProblemId}'`);
+        ev(`document.getElementById('card-linkedProb').value = '${t.linkedProblemId}'`);
       }
 
       if (t.duplicateOf) {
@@ -165,11 +169,11 @@ async function runTest() {
     // Негативный тест
     ev("state.level = 3");
     ev(`openL3Work('TK-302')`);
-    ev(`document.getElementById('l3-root').value = 'неизвестно'`);
-    ev(`document.getElementById('l3-workaround').value = '1'`);
-    ev(`document.getElementById('l3-radical').value = '1'`);
-    ev(`document.getElementById('l3-outcome').value = 'new_problem'`);
-    ev("onL3Outcome()");
+    ev(`document.getElementById('card-root').value = 'неизвестно'`);
+    ev(`document.getElementById('card-workaround').value = '1'`);
+    ev(`document.getElementById('card-radical').value = '1'`);
+    ev(`document.getElementById('card-outcome').value = 'new_problem'`);
+    ev(`document.getElementById('card-outcome').dispatchEvent(new Event('change', { bubbles: true }))`);
     ev("l3Validate()");
     ev("l3Submit()");
     ev("hideModal('modal-reg')");
