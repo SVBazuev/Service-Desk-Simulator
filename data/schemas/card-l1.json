@@ -1,16 +1,16 @@
 {
     "fields": [
-        { "id": "org", "label": "Организация", "type": "select", "required": true, "source": "ORGS" },
-        { "id": "cont", "label": "Контактное лицо", "type": "select", "required": true, "source": "CONTACTS_BY_ORG" },
-        { "id": "chan", "label": "Канал связи", "type": "select", "required": true, "options": ["Email", "Телефон", "Портал самообслуживания", "Чат на сайте", "Мессенджер"] },
+        { "id": "org", "label": "Организация", "type": "select", "required": true, "source": "ORGS", "validate": { "rule": "eq", "path": "etalon.org" } },
+        { "id": "cont", "label": "Контактное лицо", "type": "select", "required": true, "source": "CONTACTS_BY_ORG", "validate": { "rule": "eq", "path": "etalon.cont" } },
+        { "id": "chan", "label": "Канал связи", "type": "select", "required": true, "options": ["Email", "Телефон", "Портал самообслуживания", "Чат на сайте", "Мессенджер"], "validate": { "rule": "eq", "path": "etalon.chan" } },
         { "id": "title", "label": "Заголовок", "type": "text", "required": true },
         { "id": "desc", "label": "Описание ситуации", "type": "textarea", "required": true },
-        { "id": "type", "label": "Тип обращения *", "type": "select", "required": true, "options": ["Инцидент", "Запрос на обслуживание", "Консультация"] },
-        { "id": "prod", "label": "Продукт *", "type": "select", "required": true, "source": "PRODUCTS_BY_ORG" },
-        { "id": "cat", "label": "Категория *", "type": "select", "required": true, "source": "TAX_CATEGORIES" },
-        { "id": "sub", "label": "Подкатегория *", "type": "select", "required": true, "source": "TAX_SUBCATEGORIES" },
-        { "id": "vers", "label": "Продукты и версии", "type": "versions", "required": true },
-        { "id": "imp", "label": "Важность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"] },
-        { "id": "urg", "label": "Срочность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"] }
+        { "id": "type", "label": "Тип обращения *", "type": "select", "required": true, "options": ["Инцидент", "Запрос на обслуживание", "Консультация"], "validate": { "rule": "eq", "path": "etalon.type" } },
+        { "id": "prod", "label": "Продукт *", "type": "select", "required": true, "source": "PRODUCTS_BY_ORG", "validate": { "rule": "eq", "path": "etalon.prod" } },
+        { "id": "cat", "label": "Категория *", "type": "select", "required": true, "source": "TAX_CATEGORIES", "validate": { "rule": "eq", "path": "etalon.cat" } },
+        { "id": "sub", "label": "Подкатегория *", "type": "select", "required": true, "source": "TAX_SUBCATEGORIES", "validate": { "rule": "eq", "path": "etalon.sub" } },
+        { "id": "vers", "label": "Продукты и версии", "type": "versions", "required": true, "validate": { "rule": "includes", "path": "etalon.ver" } },
+        { "id": "imp", "label": "Важность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"], "validate": { "rule": "eq", "path": "etalon.imp" } },
+        { "id": "urg", "label": "Срочность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"], "validate": { "rule": "eq", "path": "etalon.urg" } }
     ]
 }

@@ -1447,14 +1447,22 @@ var SCHEMA_L1 = {
       "label": "Организация",
       "type": "select",
       "required": true,
-      "source": "ORGS"
+      "source": "ORGS",
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.org"
+      }
     },
     {
       "id": "cont",
       "label": "Контактное лицо",
       "type": "select",
       "required": true,
-      "source": "CONTACTS_BY_ORG"
+      "source": "CONTACTS_BY_ORG",
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.cont"
+      }
     },
     {
       "id": "chan",
@@ -1467,7 +1475,11 @@ var SCHEMA_L1 = {
         "Портал самообслуживания",
         "Чат на сайте",
         "Мессенджер"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.chan"
+      }
     },
     {
       "id": "title",
@@ -1490,34 +1502,54 @@ var SCHEMA_L1 = {
         "Инцидент",
         "Запрос на обслуживание",
         "Консультация"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.type"
+      }
     },
     {
       "id": "prod",
       "label": "Продукт *",
       "type": "select",
       "required": true,
-      "source": "PRODUCTS_BY_ORG"
+      "source": "PRODUCTS_BY_ORG",
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.prod"
+      }
     },
     {
       "id": "cat",
       "label": "Категория *",
       "type": "select",
       "required": true,
-      "source": "TAX_CATEGORIES"
+      "source": "TAX_CATEGORIES",
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.cat"
+      }
     },
     {
       "id": "sub",
       "label": "Подкатегория *",
       "type": "select",
       "required": true,
-      "source": "TAX_SUBCATEGORIES"
+      "source": "TAX_SUBCATEGORIES",
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.sub"
+      }
     },
     {
       "id": "vers",
       "label": "Продукты и версии",
       "type": "versions",
-      "required": true
+      "required": true,
+      "validate": {
+        "rule": "includes",
+        "path": "etalon.ver"
+      }
     },
     {
       "id": "imp",
@@ -1528,7 +1560,11 @@ var SCHEMA_L1 = {
         "высокая",
         "средняя",
         "низкая"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.imp"
+      }
     },
     {
       "id": "urg",
@@ -1539,7 +1575,11 @@ var SCHEMA_L1 = {
         "высокая",
         "средняя",
         "низкая"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "etalon.urg"
+      }
     }
   ]
 };
@@ -1551,14 +1591,22 @@ var SCHEMA_L2 = {
       "label": "Организация",
       "type": "select",
       "required": true,
-      "source": "ORGS"
+      "source": "ORGS",
+      "validate": {
+        "rule": "eq",
+        "path": "orgId"
+      }
     },
     {
       "id": "cont",
       "label": "Контактное лицо",
       "type": "select",
       "required": true,
-      "source": "CONTACTS_BY_ORG"
+      "source": "CONTACTS_BY_ORG",
+      "validate": {
+        "rule": "eq",
+        "path": "contactId"
+      }
     },
     {
       "id": "chan",
@@ -1571,7 +1619,11 @@ var SCHEMA_L2 = {
         "Портал самообслуживания",
         "Чат на сайте",
         "Мессенджер"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "channel"
+      }
     },
     {
       "id": "title",
@@ -1594,34 +1646,54 @@ var SCHEMA_L2 = {
         "Инцидент",
         "Запрос на обслуживание",
         "Консультация"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "type"
+      }
     },
     {
       "id": "prod",
       "label": "Продукт *",
       "type": "select",
       "required": true,
-      "source": "PRODUCTS_BY_ORG"
+      "source": "PRODUCTS_BY_ORG",
+      "validate": {
+        "rule": "eq",
+        "path": "prod"
+      }
     },
     {
       "id": "cat",
       "label": "Категория *",
       "type": "select",
       "required": true,
-      "source": "TAX_CATEGORIES"
+      "source": "TAX_CATEGORIES",
+      "validate": {
+        "rule": "eq",
+        "path": "cat"
+      }
     },
     {
       "id": "sub",
       "label": "Подкатегория *",
       "type": "select",
       "required": true,
-      "source": "TAX_SUBCATEGORIES"
+      "source": "TAX_SUBCATEGORIES",
+      "validate": {
+        "rule": "eq",
+        "path": "sub"
+      }
     },
     {
       "id": "vers",
       "label": "Продукты и версии",
       "type": "versions",
-      "required": true
+      "required": true,
+      "validate": {
+        "rule": "includes",
+        "path": "ver"
+      }
     },
     {
       "id": "imp",
@@ -1632,7 +1704,11 @@ var SCHEMA_L2 = {
         "высокая",
         "средняя",
         "низкая"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "imp"
+      }
     },
     {
       "id": "urg",
@@ -1643,21 +1719,33 @@ var SCHEMA_L2 = {
         "высокая",
         "средняя",
         "низкая"
-      ]
+      ],
+      "validate": {
+        "rule": "eq",
+        "path": "urg"
+      }
     },
     {
       "id": "assignee",
       "label": "Назначить ответственного *",
       "type": "select",
       "required": true,
-      "source": "EMPLOYEES"
+      "source": "EMPLOYEES",
+      "validate": {
+        "rule": "eq",
+        "path": "expectedAssignee"
+      }
     },
     {
       "id": "comment",
       "label": "Комментарий / Задача для исполнителя *",
       "type": "select",
       "required": true,
-      "source": "COMMENTS_L2"
+      "source": "COMMENTS_L2",
+      "validate": {
+        "rule": "eq",
+        "path": "expectedComment"
+      }
     }
   ]
 };
@@ -1668,21 +1756,33 @@ var SCHEMA_L3 = {
       "id": "root",
       "label": "Корневая причина (своими словами) *",
       "type": "textarea",
-      "required": true
+      "required": true,
+      "validate": {
+        "rule": "keywords",
+        "path": "rootKeywords"
+      }
     },
     {
       "id": "workaround",
       "label": "Обходное решение (workaround) *",
       "type": "select",
       "required": true,
-      "source": "WORKAROUNDS"
+      "source": "WORKAROUNDS",
+      "validate": {
+        "rule": "eqIndex",
+        "path": "workaroundCorrect"
+      }
     },
     {
       "id": "radical",
       "label": "Радикальное решение *",
       "type": "select",
       "required": true,
-      "source": "RADICAL"
+      "source": "RADICAL",
+      "validate": {
+        "rule": "eqIndex",
+        "path": "radicalCorrect"
+      }
     },
     {
       "id": "outcome",
@@ -1706,7 +1806,10 @@ var SCHEMA_L3 = {
           "value": "fixed_problem",
           "label": "Исправленная проблема (привязка к закрытой проблеме, рецидив)"
         }
-      ]
+      ],
+      "validate": {
+        "rule": "l3_logic"
+      }
     }
   ]
 };

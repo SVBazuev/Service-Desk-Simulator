@@ -425,14 +425,13 @@ function register() {
     sub: document.getElementById("card-sub").value,
     vers: state.orgVersions.map(v => v.name + " " + v.ver),
     imp: document.getElementById("card-imp").value,
-    urg: document.getElementById("card-urg").value,
-    prio: document.getElementById("auto-prio").textContent
+    urg: document.getElementById("card-urg").value
   };
-
-  state.results[t.id] = Validator.validateL1(t, formData);
+  const schema = DataStore.getSchemas()[1];
+  state.results[t.id] = Validator.validate(schema, t, formData);
+  ProgressStore.save(1, makeSnapshot());
   document.getElementById("reg-ok-id").textContent = t.id;
   showModal("modal-reg");
-  ProgressStore.save(1, makeSnapshot());
 }
 
 function assignL2() {
@@ -452,17 +451,13 @@ function assignL2() {
     assignee: document.getElementById("card-assignee").value,
     comment: document.getElementById("card-comment").value
   };
-
-  state.resultsL2[t.id] = Validator.validateL2(t, formData);
+  const schema = DataStore.getSchemas()[2];
+  state.resultsL2[t.id] = Validator.validate(schema, t, formData);
+  ProgressStore.save(2, makeSnapshot());
   document.getElementById("assign-ok-id").textContent = t.id;
   showModal("modal-assign");
-
-  // Обновление загруженности ответственного
   const assignedEmp = DataStore.getEmployees().find(e => e.id === formData.assignee);
-  if (assignedEmp && assignedEmp.workload !== undefined) {
-    assignedEmp.workload += 1;
-  }
-  ProgressStore.save(2, makeSnapshot());
+  if (assignedEmp && assignedEmp.workload !== undefined) assignedEmp.workload += 1;
 }
 
 // ===== УРОВЕНЬ 3: Инженер 2-й линии =====
@@ -713,7 +708,7 @@ function openL3Work(id) {
   }
   outcomeSelect.value = ""; // Сбрасываем выбор
   // -------------------------------------------------
-  
+
   l3RenderDiagTabs();
   l3RenderProblemBlock(t);
   onL3Outcome();
@@ -728,9 +723,9 @@ function l3Submit() {
 
   const formData = {
     root: document.getElementById("l3-root").value.trim(),
-    waIdx: document.getElementById("l3-workaround").value,
-    radIdx: document.getElementById("l3-radical").value,
-    out: document.getElementById("l3-outcome").value,
+    workaround: document.getElementById("l3-workaround").value,
+    radical: document.getElementById("l3-radical").value,
+    outcome: document.getElementById("l3-outcome").value,
     impact: document.getElementById("l3-prob-impact").value,
     prob: document.getElementById("l3-prob-prob").value,
     owner: document.getElementById("l3-prob-owner").value,
@@ -741,10 +736,11 @@ function l3Submit() {
     dupVal: document.getElementById("l3-dup-of").value
   };
 
-  const result = Validator.validateL3(t, formData);
+  const schema = DataStore.getSchemas()[3];
+  const result = Validator.validate(schema, t, formData);
   state.resultsL3[t.id] = result;
 
-  if (formData.out === "new_problem" && result.errs.length === 0) {
+  if (formData.outcome === "new_problem" && result.ok) {
     if (!state.createdProblems.includes(t.problem?.record)) {
       state.createdProblems.push(t.problem?.record);
     }
