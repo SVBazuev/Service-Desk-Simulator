@@ -22,15 +22,19 @@ var FormRenderer = {
     // Обновляем видимость сразу после рендера
     this.updateVisibility(container);
 
-    // Вешаем слушатели на изменения (делегирование)
-    container.addEventListener('change', (e) => {
-      this.updateVisibility(container);
-      this.refreshDynamicOptions(container, e.target.id);
-      if (typeof l3Validate === 'function' && typeof state !== 'undefined' && state.level === 3) l3Validate();
-    });
-    container.addEventListener('input', (e) => {
-      this.updateVisibility(container);
-    });
+    // Вешаем слушатели на изменения (делегирование) — только один раз на контейнер,
+    // чтобы при повторных render() они не накапливались.
+    if (!container.dataset.frbBound) {
+      container.dataset.frbBound = "1";
+      container.addEventListener('change', (e) => {
+        this.updateVisibility(container);
+        this.refreshDynamicOptions(container, e.target.id);
+        if (typeof l3Validate === 'function' && typeof state !== 'undefined' && state.level === 3) l3Validate();
+      });
+      container.addEventListener('input', () => {
+        this.updateVisibility(container);
+      });
+    }
   },
 
   renderField: function(field) {

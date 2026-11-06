@@ -194,7 +194,29 @@ async function runTest() {
       err(`автотесты L3 провалились: ${atBad} BAD`);
     }
 
-    console.log(fail === 0 ? "PASS: все проверки L3 пройдены" : `FAIL: ${fail} ошибок`);
+    // Автотесты L1 (встроенные в игру)
+    ev("runAutotests()");
+    ev("hideModal('modal-autotest')");
+    const l1Ok = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
+    const l1Bad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
+    const expectedL1 = ev("TICKETS.length") * 2;
+    console.log(`Автотесты L1: ${l1Ok} OK / ${l1Bad} BAD (ожидалось ${expectedL1} OK / 0 BAD)`);
+    if (l1Bad > 0) {
+      err(`автотесты L1 провалились: ${l1Bad} BAD`);
+    }
+
+    // Автотесты L2 (встроенные в игру)
+    ev("runAutotestsL2()");
+    ev("hideModal('modal-autotest')");
+    const l2Ok = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
+    const l2Bad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
+    const expectedL2 = ev("TICKETS_L2.length") * 2;
+    console.log(`Автотесты L2: ${l2Ok} OK / ${l2Bad} BAD (ожидалось ${expectedL2} OK / 0 BAD)`);
+    if (l2Bad > 0) {
+      err(`автотесты L2 провалились: ${l2Bad} BAD`);
+    }
+
+    console.log(fail === 0 ? "PASS: все проверки L1/L2/L3 пройдены" : `FAIL: ${fail} ошибок`);
     process.exit(fail === 0 ? 0 : 1);
 
   } catch (e) {

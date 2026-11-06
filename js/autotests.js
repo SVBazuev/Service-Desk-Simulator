@@ -106,6 +106,17 @@ function runAutotests() {
     // ТЕСТ 2: Ломаем
     delete state.results[t.id];
     openWork(t.id);
+    // =========
+    // console.log("[L1-T2]", t.id,
+    //   "state.level=", state.level,
+    //   "state.currentId=", state.currentId,
+    //   "card-org=", document.getElementById("card-org") && document.getElementById("card-org").value,
+    //   "card-type=", document.getElementById("card-type") && document.getElementById("card-type").value,
+    //   "card-imp=", document.getElementById("card-imp") && document.getElementById("card-imp").value,
+    //   "card-urg=", document.getElementById("card-urg") && document.getElementById("card-urg").value,
+    //   "orgVersions=", JSON.stringify(state.orgVersions)
+    // );
+    // ==========
     const wrongOrgObj = ORGS.find(o => o.id !== et.org);
     document.getElementById("card-org").value = wrongOrgObj.id; onCardOrg();
     const wrongContacts = getContactsByOrg(wrongOrgObj.id);
@@ -120,6 +131,12 @@ function runAutotests() {
 
     register(); hideModal("modal-reg");
     const res2 = state.results[t.id];
+    // const pass2 = res2 && res2.errs.length > 0;
+    // console.log("[L1-T2]", t.id,
+    //   "res2=", JSON.stringify(res2),
+    //   "card-org-after=", document.getElementById("card-org").value,
+    //   "card-type-after=", document.getElementById("card-type").value
+    // );
     const pass2 = res2 && res2.errs.length > 0;
     if (pass2) testsPassed++; else testsFailed++;
 
@@ -161,8 +178,8 @@ function runAutotestsL2() {
     openWork(t.id);
 
     // ТЕСТ 1: Правильно
-    document.getElementById("card-assignee-l2").value = t.expectedAssignee;
-    document.getElementById("card-comment-l2").value = t.expectedComment;
+    document.getElementById("card-assignee").value = t.expectedAssignee;
+    document.getElementById("card-comment").value = t.expectedComment;
     validate();
     assignL2(); hideModal("modal-assign");
 
@@ -183,8 +200,8 @@ function runAutotestsL2() {
     onCardPri();
 
     // Ломаем назначение
-    document.getElementById("card-assignee-l2").value = wrongAssignee.id;
-    document.getElementById("card-comment-l2").value = wrongComment.id;
+    document.getElementById("card-assignee").value = wrongAssignee.id;
+    document.getElementById("card-comment").value = wrongComment.id;
     validate();
     assignL2(); hideModal("modal-assign");
 
@@ -211,7 +228,6 @@ function runAutotestsL2() {
     const emp = EMPLOYEES.find(e => e.id === b.id);
     if (emp) emp.workload = b.workload;
   }
-  fillAssigneeSelect();
 
   renderQueue(); showScreen("screen-queue-l2"); showModal("modal-autotest");
 }
@@ -222,7 +238,7 @@ function runAutotestsL3() {
   const backupResults = JSON.parse(JSON.stringify(state.resultsL3));
   const backupId = state.currentId;
   const backupLevel = state.level;
-  const backupL3 = JSON.parse(JSON.stringify(state.l3));
+  const backupL3 = { ...state.l3 };
 
   state.level = 3;
 

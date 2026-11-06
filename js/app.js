@@ -51,6 +51,7 @@ function init() {
   document.getElementById("btn-assign-l2").addEventListener("click", assignL2);
   document.getElementById("btn-finish-l2").addEventListener("click", () => showResults(2));
   document.getElementById("btn-start-l2-work").addEventListener("click", () => { hideModal("modal-l2-intro"); showScreen("screen-queue-l2"); });
+  document.getElementById("btn-start-l3-work").addEventListener("click", () => { hideModal("modal-l3-intro"); showScreen("screen-queue-l3"); });
 
   document.getElementById("btn-l3-clarify").addEventListener("click", l3RequestClarify);
   document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
@@ -505,7 +506,7 @@ function l3RenderDiagTabs() {
 }
 
 function l3Validate() {
-  const t = TICKETS_L3.find(x => x.id === state.currentId);
+  const t = DataStore.getTicket(3, state.currentId);
   const hint = document.getElementById("l3-submit-hint");
   const btn = document.getElementById("btn-l3-submit");
   if (!t) return;
@@ -555,7 +556,7 @@ function l3GoBack() {
 }
 
 function openL3Work(id) {
-  const t = TICKETS_L3.find(x => x.id === id);
+  const t = DataStore.getTicket(3, id);
   if (!t) return;
   state.currentId = id;
   state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
@@ -603,7 +604,7 @@ function openL3Work(id) {
 }
 
 function l3Submit() {
-  const t = TICKETS_L3.find(x => x.id === state.currentId);
+  const t = DataStore.getTicket(3, state.currentId);
   if (!t) return;
 
   const schema = DataStore.getSchemas()[3];
@@ -715,8 +716,8 @@ function showResults(level) {
     tbody.appendChild(tr);
   }
 
-  ProgressStore.save(level, { ...makeSnapshot(), finishedAt: Date.now() });
   showScreen("screen-res");
+  ProgressStore.save(level, { ...makeSnapshot(), finishedAt: Date.now() });
 }
 
 function restart() {
