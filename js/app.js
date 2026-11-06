@@ -55,6 +55,7 @@ function init() {
   document.getElementById("btn-l3-clarify").addEventListener("click", l3RequestClarify);
   document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
   document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
+  document.getElementById("btn-finish-l3").addEventListener("click", () => showResults(3));
   document.getElementById("btn-back-queue-l3").addEventListener("click", l3GoBack);
 
   // Поля L3 теперь рендерятся динамически (слушатели вешает FormRenderer).

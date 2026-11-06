@@ -31,11 +31,6 @@ var FormRenderer = {
     container.addEventListener('input', (e) => {
       this.updateVisibility(container);
     });
-    container.addEventListener('change', (e) => {
-      this.updateVisibility(container);
-      this.refreshDynamicOptions(container, e.target.id);
-      if (typeof l3Validate === 'function' && typeof state !== 'undefined' && state.level === 3) l3Validate();
-    });
   },
 
   renderField: function(field) {
