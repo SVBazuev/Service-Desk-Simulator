@@ -1,0 +1,16 @@
+{
+    "id": 2,
+    "title": "Уровень 2 — Распределение",
+    "desc": "Назначение ответственных, эскалации.",
+    "tickets": "data/tickets/l2.json",
+    "schema": "data/schemas/card-l2.json",
+    "workflow": "l2",
+    "queueScreen": "screen-queue-l2",
+    "queueList": "queue-list-l2",
+    "queueDone": "q-done-l2",
+    "queueTotal": "q-total-l2",
+    "queueFinish": "btn-finish-l2",
+    "introModal": "modal-l2-intro",
+    "workScreen": "screen-work",
+    "workTitle": "Распределение задач (Тимлид)"
+}

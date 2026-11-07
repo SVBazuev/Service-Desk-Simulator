@@ -4,7 +4,8 @@ const path = require('path');
 // Корень проекта (на уровень выше папки scripts)
 const ROOT = path.join(__dirname, '..');
 
-const JSON_FILES = {
+// Общие данные (не зависят от уровня)
+const COMMON_JSON = {
   ORGS: "data/common/organizations.json",
   CONTACTS: "data/common/contacts.json",
   EMPLOYEES: "data/common/employees.json",
@@ -14,33 +15,63 @@ const JSON_FILES = {
   MATRIX: "data/common/matrix.json",
   PROBLEM_METHODS: "data/common/problem-methods.json",
   ARCHIVE_INCIDENTS: "data/common/archive-incidents.json",
-  TICKETS: "data/tickets/l1.json",
-  TICKETS_L2: "data/tickets/l2.json",
-  TICKETS_L3: "data/tickets/l3.json",
   PROBLEMS: "data/problems.json",
-  KB_L3: "data/kb-l3.json",
-  SCHEMA_L1: "data/schemas/card-l1.json",
-  SCHEMA_L2: "data/schemas/card-l2.json",
-  SCHEMA_L3: "data/schemas/card-l3.json"
+  KB_L3: "data/kb-l3.json"
 };
 
+// Реестр уровней — единственная точка, куда добавляется новый уровень
+const LEVELS_INDEX = "data/levels/index.json";
+
 const out = {};
-for (const [key, file] of Object.entries(JSON_FILES)) {
-  const fullPath = path.join(ROOT, file);
-  out[key] = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+for (const [key, file] of Object.entries(COMMON_JSON)) {
+  out[key] = JSON.parse(fs.readFileSync(path.join(ROOT, file), 'utf8'));
 }
 
-// --- Валидация контракта options в схемах (B.5) ---
-// Разрешены: массив строк или массив {value,label}. Всё остальное -> warning.
+// --- Загрузка уровней из манифестов ---
+const levelIndex = JSON.parse(fs.readFileSync(path.join(ROOT, LEVELS_INDEX), 'utf8'));
+const levelManifests = [];
+const levelData = {};
+
+for (const manifestFile of levelIndex.levels) {
+  const manifestPath = path.join(ROOT, 'data/levels', manifestFile);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+  const tickets = JSON.parse(fs.readFileSync(path.join(ROOT, manifest.tickets), 'utf8'));
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, manifest.schema), 'utf8'));
+
+  // Backward-compat: TICKETS / TICKETS_LN и SCHEMA_LN остаются как глобалы
+  // (используются autotests.js — отдельный трек)
+  const ticketsKey = manifest.id === 1 ? 'TICKETS' : `TICKETS_L${manifest.id}`;
+  const schemaKey = `SCHEMA_L${manifest.id}`;
+  out[ticketsKey] = tickets;
+  out[schemaKey] = schema;
+
+  // Метаданные уровня (без tickets/schema — они в LEVEL_DATA)
+  levelManifests.push({
+    id: manifest.id,
+    title: manifest.title,
+    desc: manifest.desc,
+    workflow: manifest.workflow || null,
+    queueScreen: manifest.queueScreen || null,
+    queueList: manifest.queueList || null,
+    queueDone: manifest.queueDone || null,
+    queueTotal: manifest.queueTotal || null,
+    queueFinish: manifest.queueFinish || null,
+    introModal: manifest.introModal || null,
+    workScreen: manifest.workScreen || null,
+    workTitle: manifest.workTitle || null
+  });
+  levelData[manifest.id] = { tickets, schema };
+}
+levelManifests.sort((a, b) => a.id - b.id);
+
+// --- Валидация контракта options (B.5) ---
 function validateSchemaOptions(name, schema) {
   if (!schema || !Array.isArray(schema.fields)) return;
   const walk = (fields) => {
     for (const f of fields) {
       if (!f) continue;
-      if (f.type === "composite" && Array.isArray(f.fields)) {
-        walk(f.fields);
-        continue;
-      }
+      if (f.type === "composite" && Array.isArray(f.fields)) { walk(f.fields); continue; }
       if (f.options === undefined) continue;
       if (!Array.isArray(f.options)) {
         console.warn(`⚠ ${name}: field "${f.id}" options is not an array`);
@@ -49,40 +80,38 @@ function validateSchemaOptions(name, schema) {
       f.options.forEach((o, i) => {
         if (typeof o === "string") return;
         if (!o || typeof o !== "object" || !("value" in o)) {
-          console.warn(
-            `⚠ ${name}: field "${f.id}" option[${i}] is neither a string nor {value,label}:`,
-            o
-          );
+          console.warn(`⚠ ${name}: field "${f.id}" option[${i}] is neither a string nor {value,label}:`, o);
         }
       });
     }
   };
   walk(schema.fields);
 }
-
-// Итерируем по всем загруженным схемам, а не по хардкоженному списку.
-// Сегодня это SCHEMA_L1/L2/L3, завтра — SCHEMA_L4+ подхватится автоматически,
-// как только появится в JSON_FILES (или в манифесте после Commit D).
 for (const [key, schema] of Object.entries(out)) {
-  if (key.startsWith("SCHEMA_")) {
-    validateSchemaOptions(key, schema);
-  }
+  if (key.startsWith("SCHEMA_")) validateSchemaOptions(key, schema);
 }
-// --- /Валидация контракта options ---
 
+// --- Генерация bundle ---
 const banner = "// АВТОГЕНЕРАЦИЯ! Не редактируйте этот файл руками. Меняйте JSON в папке data/ и запускайте npm run build\n";
 let code = banner;
 
-// Генерируем объявление глобальных переменных (window.ORGS = ... и т.д.)
 for (const [key, data] of Object.entries(out)) {
   code += `var ${key} = ${JSON.stringify(data, null, 2)};\n\n`;
 }
 
-const outDir = path.join(ROOT, 'js');
-if (!fs.existsSync(outDir)) {
-  fs.mkdirSync(outDir, { recursive: true });
-}
+// LEVELS — массив манифестов уровней
+code += `var LEVELS = ${JSON.stringify(levelManifests, null, 2)};\n\n`;
 
+// LEVEL_DATA — ссылки на глобалы, без дублирования
+code += "var LEVEL_DATA = {\n";
+for (const [id] of Object.entries(levelData)) {
+  const ticketsKey = String(id) === '1' ? 'TICKETS' : `TICKETS_L${id}`;
+  code += `  ${id}: { tickets: ${ticketsKey}, schema: SCHEMA_L${id} },\n`;
+}
+code += "};\n\n";
+
+const outDir = path.join(ROOT, 'js');
+if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 const outPath = path.join(outDir, 'data-bundle.js');
 fs.writeFileSync(outPath, code, 'utf8');
 console.log(`✅ Успешно собран: ${outPath}`);

@@ -4,29 +4,30 @@
 var State = {
   level: 1,
   currentId: null,
-  results: {},
-  resultsL2: {},
-  resultsL3: {},
+  resultsByLevel: {},  // { 1: {}, 2: {}, 3: {}, ... }
   orgVersions: [],
   createdProblems: [],
   l3: { requestedClarify: false, clarified: false, diagOpen: null },
 
-  // Метод для полного сброса состояния (полезно при рестарте)
   reset: function() {
     this.level = 1;
     this.currentId = null;
-    this.results = {};
-    this.resultsL2 = {};
-    this.resultsL3 = {};
+    this.resultsByLevel = {};
     this.orgVersions = [];
     this.createdProblems = [];
     this.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
   },
 
-  // Получить результаты для текущего уровня
   getResults: function(level) {
-    if (level === 1) return this.results;
-    if (level === 2) return this.resultsL2;
-    return this.resultsL3;
-  }
+    if (!this.resultsByLevel[level]) this.resultsByLevel[level] = {};
+    return this.resultsByLevel[level];
+  },
+
+  // Backward-compat accessors (используются autotests.js)
+  get results()   { return this.getResults(1); },
+  set results(v)  { this.resultsByLevel[1] = v; },
+  get resultsL2() { return this.getResults(2); },
+  set resultsL2(v){ this.resultsByLevel[2] = v; },
+  get resultsL3() { return this.getResults(3); },
+  set resultsL3(v){ this.resultsByLevel[3] = v; }
 };

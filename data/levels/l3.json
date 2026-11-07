@@ -1,0 +1,16 @@
+{
+    "id": 3,
+    "title": "Уровень 3 — Решение инцидентов",
+    "desc": "Диагностика, Known Error, Problem Management.",
+    "tickets": "data/tickets/l3.json",
+    "schema": "data/schemas/card-l3.json",
+    "workflow": "l3",
+    "queueScreen": "screen-queue-l3",
+    "queueList": "queue-list-l3",
+    "queueDone": "q-done-l3",
+    "queueTotal": "q-total-l3",
+    "queueFinish": "btn-finish-l3",
+    "introModal": "modal-l3-intro",
+    "workScreen": "screen-work-l3",
+    "workTitle": "Рабочее место инженера"
+}

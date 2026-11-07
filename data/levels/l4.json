@@ -1,0 +1,8 @@
+{
+    "id": 4,
+    "title": "Уровень 4 (stub)",
+    "desc": "Заглушка для проверки манифестов.",
+    "tickets": "data/tickets/l4.json",
+    "schema": "data/schemas/card-l4.json",
+    "workflow": "l4"
+}
