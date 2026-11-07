@@ -8,6 +8,23 @@ var FormRenderer = {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
   },
 
+  // Резолвер источника для tabs/actions: поддерживает [N]-индексацию
+  // ("ticket.clarifications[0].answer" -> "ticket.clarifications.0.answer").
+  // Возвращает undefined на битом пути, не бросает.
+  resolveSource: function(context, path) {
+    if (!path) return undefined;
+    const normalized = String(path).replace(/\[(\d+)\]/g, '.$1');
+    return normalized.split('.').reduce((acc, part) => acc && acc[part], context);
+  },
+  // Проверка условия showIf: сейчас поддерживаем truthy по path.
+  evaluateCondition: function(condition, context) {
+    if (!condition) return true;
+    if (condition.path) {
+      return !!this.resolveSource(context, condition.path);
+    }
+    return true;
+  },
+
   render: function(containerId, schema, context = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -221,5 +238,88 @@ var FormRenderer = {
     };
     collect(schema.fields);
     return data;
+  },
+
+  // Рендерит таб-навигацию и контент по декларации schema.tabs.
+  // Ищет tab-дефиницию по containerId.
+  renderTabs: function(containerId, schema, context) {
+    if (!schema || !Array.isArray(schema.tabs)) return;
+    const tab = schema.tabs.find(t => t.containerId === containerId);
+    if (!tab) return;
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    const titleEl = tab.titleId ? document.getElementById(tab.titleId) : null;
+    const contentEl = tab.contentId ? document.getElementById(tab.contentId) : null;
+    const items = this.resolveSource(context, tab.source) || [];
+    wrap.innerHTML = "";
+
+    const idField = tab.itemIdField || 'id';
+    const labelField = tab.itemLabelField || 'label';
+    const contentField = tab.itemContentField || 'content';
+
+    const open = (item) => {
+      if (titleEl) titleEl.textContent = item[labelField];
+      if (contentEl) contentEl.textContent = item[contentField];
+      wrap.querySelectorAll('.btn').forEach(b => {
+        const active = b.getAttribute('data-tab-id') === String(item[idField]);
+        b.style.background = active ? 'var(--primary)' : '';
+        b.style.color = active ? '#fff' : '';
+        b.style.borderColor = active ? 'transparent' : '';
+      });
+    };
+
+    for (const item of items) {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.style.marginRight = '6px';
+      b.setAttribute('data-tab-id', String(item[idField]));
+      b.textContent = item[labelField];
+      b.addEventListener('click', () => open(item));
+      wrap.appendChild(b);
+    }
+
+    if (items.length === 0) {
+      if (titleEl) titleEl.textContent = 'Выберите инструмент диагностики';
+      if (contentEl) contentEl.textContent = '';
+      return;
+    }
+    if (tab.autoOpen !== false) open(items[0]);
+  },
+
+  // Идемпотентно навешивает click-обработчики и применяет showIf.
+  bindActions: function(schema, context) {
+    if (!schema || !Array.isArray(schema.actions)) return;
+    for (const action of schema.actions) {
+      if (action.trigger === 'click' && action.buttonId) {
+        const btn = document.getElementById(action.buttonId);
+        if (btn) btn.onclick = () => this.applyAction(action, context);
+      } else if (action.type === 'showIf') {
+        const visible = this.evaluateCondition(action.condition, context);
+        (action.targets || []).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = visible ? '' : 'none';
+        });
+      }
+    }
+  },
+
+  // Выполняет одно действие (showText) по контексту.
+  applyAction: function(action, context) {
+    if (!action) return;
+    if (action.type === 'showText') {
+      const val = this.resolveSource(context, action.source);
+      if (action.target) {
+        const tgt = document.getElementById(action.target);
+        if (tgt) tgt.textContent = val != null ? String(val) : '';
+      }
+      if (action.targetBlock) {
+        const blk = document.getElementById(action.targetBlock);
+        if (blk) blk.style.display = 'block';
+      }
+      if (action.hideAfter) {
+        const btn = document.getElementById(action.hideAfter);
+        if (btn) btn.style.display = 'none';
+      }
+    }
   }
 };

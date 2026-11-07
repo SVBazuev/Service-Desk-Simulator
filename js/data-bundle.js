@@ -1897,6 +1897,53 @@ var SCHEMA_L3 = {
         ]
       }
     }
+  ],
+  "tabs": [
+    {
+      "id": "diagnostics",
+      "containerId": "l3-diag-tabs",
+      "titleId": "l3-diag-title",
+      "contentId": "l3-diag-content",
+      "source": "ticket.diagnostics",
+      "itemIdField": "id",
+      "itemLabelField": "label",
+      "itemContentField": "content",
+      "autoOpen": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "clarify",
+      "trigger": "click",
+      "buttonId": "btn-l3-clarify",
+      "type": "showText",
+      "source": "ticket.clarifications[0].answer",
+      "target": "l3-clarify-text",
+      "targetBlock": "l3-clarify-block",
+      "hideAfter": "btn-l3-clarify"
+    },
+    {
+      "id": "duplicateVisibility",
+      "type": "showIf",
+      "condition": {
+        "path": "ticket.duplicateOf"
+      },
+      "targets": [
+        "l3-dup-block",
+        "l3-dup-link",
+        "l3-dup-hint"
+      ]
+    },
+    {
+      "id": "clarifyButtonVisibility",
+      "type": "showIf",
+      "condition": {
+        "path": "ticket.clarifications[0].answer"
+      },
+      "targets": [
+        "btn-l3-clarify"
+      ]
+    }
   ]
 };
 
