@@ -53,7 +53,6 @@ function init() {
   document.getElementById("btn-start-l2-work").addEventListener("click", () => { hideModal("modal-l2-intro"); showScreen("screen-queue-l2"); });
   document.getElementById("btn-start-l3-work").addEventListener("click", () => { hideModal("modal-l3-intro"); showScreen("screen-queue-l3"); });
 
-  document.getElementById("btn-l3-clarify").addEventListener("click", l3RequestClarify);
   document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
   document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
   document.getElementById("btn-finish-l3").addEventListener("click", () => showResults(3));
@@ -454,55 +453,14 @@ function assignL2() {
 
 // ===== УРОВЕНЬ 3: Инженер 2-й линии =====
 
-function l3OpenDiag(id) {
-  const t = getTicket(state.currentId);
-  if (!t) return;
-  const d = (t.diagnostics || []).find(x => x.id === id);
-  if (!d) return;
-  state.l3.diagOpen = id;
-  document.getElementById("l3-diag-title").textContent = d.label;
-  document.getElementById("l3-diag-content").textContent = d.content;
-  document.querySelectorAll("#l3-diag-tabs .btn").forEach(b => {
-    const active = b.getAttribute("data-diag") === id;
-    b.style.background = active ? "var(--primary)" : "";
-    b.style.color = active ? "#fff" : "";
-    b.style.borderColor = active ? "transparent" : "";
-  });
-}
-
 function l3RequestClarify() {
   const t = getTicket(state.currentId);
   if (!t || !t.clarifications || t.clarifications.length === 0) return;
   state.l3.requestedClarify = true;
   state.l3.clarified = true;
-  const c = t.clarifications[0];
-  document.getElementById("l3-clarify-text").textContent = c.answer;
-  document.getElementById("l3-clarify-block").style.display = "block";
-  document.getElementById("btn-l3-clarify").style.display = "none";
-}
-
-function l3RenderDiagTabs() {
-  const t = getTicket(state.currentId);
-  const wrap = document.getElementById("l3-diag-tabs");
-  wrap.innerHTML = "";
-  if (!t) return;
-  for (const d of t.diagnostics || []) {
-    const b = document.createElement("button");
-    b.className = "btn";
-    b.style.marginRight = "6px";
-    b.setAttribute("data-diag", d.id);
-    b.textContent = d.label;
-    b.addEventListener("click", () => l3OpenDiag(d.id));
-    wrap.appendChild(b);
-  }
-  const content = document.getElementById("l3-diag-content");
-  const title = document.getElementById("l3-diag-title");
-  if (state.l3.diagOpen) {
-    l3OpenDiag(state.l3.diagOpen);
-  } else {
-    title.textContent = "Выберите инструмент диагностики";
-    content.textContent = "";
-  }
+  const schema = DataStore.getSchemas()[3];
+  const action = (schema.actions || []).find(a => a.id === "clarify");
+  if (action) FormRenderer.applyAction(action, { ticket: t });
 }
 
 function l3Validate() {
@@ -573,11 +531,7 @@ function openL3Work(id) {
   document.getElementById("l3-frm-text").textContent = t.text;
   document.getElementById("l3-clarify-block").style.display = "none";
   document.getElementById("l3-clarify-text").textContent = "";
-  document.getElementById("btn-l3-clarify").style.display = (t.clarifications && t.clarifications.length > 0) ? "block" : "none";
 
-  document.getElementById("l3-dup-block").style.display = t.duplicateOf ? "block" : "none";
-  document.getElementById("l3-dup-link").style.display = t.duplicateOf ? "block" : "none";
-  document.getElementById("l3-dup-hint").style.display = t.duplicateOf ? "block" : "none";
   const dupSel = document.getElementById("l3-dup-of");
   dupSel.innerHTML = "";
   if (t.duplicateOf) {
@@ -591,6 +545,8 @@ function openL3Work(id) {
   // --- ДИНАМИЧЕСКИЙ РЕНДЕРИНГ ФОРМЫ ---
   const schema = DataStore.getSchemas()[3];
   FormRenderer.render("l3-dynamic-form", schema, { ticket: t });
+  FormRenderer.renderTabs('l3-diag-tabs', schema, { ticket: t });
+  FormRenderer.bindActions(schema, { ticket: t });
 
   // --- ОБНОВЛЕНИЕ RO-БЛОКА ---
   document.getElementById("l3-ro-num").textContent = t.id;
@@ -598,7 +554,6 @@ function openL3Work(id) {
   document.getElementById("l3-ro-imp").textContent = t.imp + " / " + t.urg;
   document.getElementById("l3-ro-sla").textContent = m ? (m.react + " / " + m.sol) : "-";
 
-  l3RenderDiagTabs();
   showScreen("screen-work-l3");
   l3Validate();
 }
