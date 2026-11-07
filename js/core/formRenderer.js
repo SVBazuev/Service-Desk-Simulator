@@ -13,18 +13,6 @@ var FormRenderer = {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
   },
 
-  resolveSource: function(context, path) {
-    if (!path) return undefined;
-    const n = String(path).replace(/\[(\d+)\]/g, '.$1');
-    return n.split('.').reduce((acc, part) => acc && acc[part], context);
-  },
-
-  evaluateCondition: function(condition, context) {
-    if (!condition) return true;
-    if (condition.path) return !!this.resolveSource(context, condition.path);
-    return true;
-  },
-
   _normalizeOptions: function(raw) {
     if (!raw) return [];
     return raw.map(o => typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label });

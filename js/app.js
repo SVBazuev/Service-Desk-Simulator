@@ -379,7 +379,7 @@ function renderDiagnostics(t) {
 
   const tabs = document.createElement("div");
   tabs.id = "diag-tabs";
-  tabs.className = "l3-diag-tabs";
+  tabs.className = "diag-tabs";
   body.appendChild(tabs);
 
   const block = document.createElement("div");
