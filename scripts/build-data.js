@@ -30,6 +30,46 @@ for (const [key, file] of Object.entries(JSON_FILES)) {
   out[key] = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
 }
 
+// --- Валидация контракта options в схемах (B.5) ---
+// Разрешены: массив строк или массив {value,label}. Всё остальное -> warning.
+function validateSchemaOptions(name, schema) {
+  if (!schema || !Array.isArray(schema.fields)) return;
+  const walk = (fields) => {
+    for (const f of fields) {
+      if (!f) continue;
+      if (f.type === "composite" && Array.isArray(f.fields)) {
+        walk(f.fields);
+        continue;
+      }
+      if (f.options === undefined) continue;
+      if (!Array.isArray(f.options)) {
+        console.warn(`⚠ ${name}: field "${f.id}" options is not an array`);
+        continue;
+      }
+      f.options.forEach((o, i) => {
+        if (typeof o === "string") return;
+        if (!o || typeof o !== "object" || !("value" in o)) {
+          console.warn(
+            `⚠ ${name}: field "${f.id}" option[${i}] is neither a string nor {value,label}:`,
+            o
+          );
+        }
+      });
+    }
+  };
+  walk(schema.fields);
+}
+
+// Итерируем по всем загруженным схемам, а не по хардкоженному списку.
+// Сегодня это SCHEMA_L1/L2/L3, завтра — SCHEMA_L4+ подхватится автоматически,
+// как только появится в JSON_FILES (или в манифесте после Commit D).
+for (const [key, schema] of Object.entries(out)) {
+  if (key.startsWith("SCHEMA_")) {
+    validateSchemaOptions(key, schema);
+  }
+}
+// --- /Валидация контракта options ---
+
 const banner = "// АВТОГЕНЕРАЦИЯ! Не редактируйте этот файл руками. Меняйте JSON в папке data/ и запускайте npm run build\n";
 let code = banner;
 

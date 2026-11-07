@@ -140,7 +140,7 @@ var FormRenderer = {
   },
 
   populateSelect: function(input, field) {
-    let opts = field.options ? [...field.options] : [];
+    let opts = this._normalizeOptions(field.options);
 
     if (field.source && this.currentContext.ticket) {
       const t = this.currentContext.ticket;
@@ -154,6 +154,15 @@ var FormRenderer = {
       }
     }
     fillSelect(input, opts);
+  },
+
+  // Единственное место, где строки из options превращаются в {value,label}.
+  // Вызывающие (populateSelect) обязаны передавать результат дальше в fillSelect.
+  _normalizeOptions: function(raw) {
+    if (!raw) return [];
+    return raw.map(o =>
+      typeof o === "string" ? { value: o, label: o } : { value: o.value, label: o.label }
+    );
   },
 
   updateVisibility: function(container) {
