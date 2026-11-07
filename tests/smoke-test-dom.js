@@ -216,6 +216,24 @@ async function runTest() {
       err(`автотесты L2 провалились: ${l2Bad} BAD`);
     }
 
+    // --- Level manifests (D): L4 stub ---
+    const l4Ids = ev("DataStore.getLevels().map(l => l.id)");
+    if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {
+      err("LEVELS должен содержать уровень 4 (stub)");
+    }
+    const l4Tickets = ev("DataStore.getTickets(4)");
+    if (!Array.isArray(l4Tickets) || l4Tickets.length !== 0) {
+      err("DataStore.getTickets(4) должен вернуть []");
+    }
+    const l4Schema = ev("DataStore.getSchema(4)");
+    if (!l4Schema || !Array.isArray(l4Schema.fields) || l4Schema.fields.length !== 0) {
+      err("DataStore.getSchema(4) должен вернуть {fields: []}");
+    }
+    const l4SchemasMap = ev("DataStore.getSchemas()");
+    if (!l4SchemasMap[4]) {
+      err("DataStore.getSchemas()[4] должен существовать");
+    }
+
     console.log(fail === 0 ? "PASS: все проверки L1/L2/L3 пройдены" : `FAIL: ${fail} ошибок`);
     process.exit(fail === 0 ? 0 : 1);
 
