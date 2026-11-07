@@ -4,6 +4,7 @@
 var State = {
   level: 1,
   currentId: null,
+  currentForm: null,
   resultsByLevel: {},  // { 1: {}, 2: {}, 3: {}, ... }
   orgVersions: [],
   createdProblems: [],
@@ -12,6 +13,7 @@ var State = {
   reset: function() {
     this.level = 1;
     this.currentId = null;
+    this.currentForm = null;
     this.resultsByLevel = {};
     this.orgVersions = [];
     this.createdProblems = [];

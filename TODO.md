@@ -4,17 +4,14 @@
 
 ## ✅ Сделано (Done)
 
-☑ ## Архитектура (A, B, C, D)
+☑ ## Архитектура (A, B, C, D, D.5)
 
-Валидация вынесена в JSON-схемы (`field.validate.rule`, Commit A).
-
-Рендерер поддерживает `composite`, `checkboxGroup`, `showIf` (Commit B).
-
-Контракт `options` унифицирован (только `{value, label}`), добавлена build-time валидация (Commit B.5).
-
-Диагностика и действия L3 вынесены в JSON-схему (`tabs` + `actions`, Commit C).
-
-Внедрены манифесты уровней (Commit D). `app.js` и `dataStore.js` больше не содержат хардкода `if (level === N)`. Добавлен L4-stub.
+- Валидация вынесена в JSON-схемы (`field.validate.rule`, Commit A).
+- Рендерер поддерживает `composite`, `checkboxGroup`, `showIf` (Commit B).
+- Контракт `options` унифицирован, добавлена build-time валидация (Commit B.5).
+- Диагностика L3 вынесена в JSON (Commit C, *временно заменено на TemplateRenderer в D.5*).
+- Внедрены манифесты уровней (Commit D). Добавлен L4-stub.
+- **Commit D.5: Component Registry & Dynamic Anchors.** Удалены хардкодные ID для полей (`card-org` и т.д.). Внедрен `state.currentForm` (Registry). Смоук-тесты переведены на работу через Registry.
 
 ☑ ## Технический долг и багфиксы
 
@@ -31,44 +28,52 @@
 Смоук-тест покрывает L1, L2, L3 и L4-stub.
 
 ## 🔥 Высокий приоритет (Next Refactoring)
-□ **Commit D.5: Universal UI Unification (Critical)**.
-Сейчас L1/L2 используют `screen-work` и `dynamic-form-container`, а L3/L4 
-используют `screen-work-l3` и `l3-dynamic-form`. Это технический долг.
-План:
-  1. Объединить экраны в один `screen-work` с универсальными якорями: 
-     `work-form`, `work-submit`, `work-hint`, `work-extra`.
-  2. Научить `FormRenderer` рендерить кастомные типы полей: 
-     `"type": "versions"` (для L1/L2) и `"type": "sla-calc"` (для L1/L2).
-  3. Удалить `openL3Work` из `app.js`. Оставить одну `openWork` для всех.
-  4. Обновить `data/levels/*.json` (все уровни указывают на `screen-work`).
-  5. Обновить `tests/smoke-test-dom.js` (убрать хардкод `l3-dynamic-form`).
 
+□ **Commit D.6: Naming & Contract Prep (Fast)**
+  - Переименовать `workflow: "l3"` -> `"engineer"` (в `l3.json` и `l4.json`).
+  - Переименовать `state.l3` -> `state.engineer`, `state.resultsL3` -> `state.resultsEngineer`.
+  - Переименовать `l3Submit` -> `submitEngineer`, `l3RequestClarify` -> `requestEngineerClarify`.
+  - Добавить `"template": "registrar" | "dispatcher" | "engineer"` в JSON-схемы (пока игнорируется рантаймом).
+  - Добавить объект `queue` и `intro` в манифесты уровней (замена статичным ID).
 
-□ Commit E: Вынос HTML из `app.js`.
-Создать `js/core/templateRenderer.js`, перенести огромные HTML-строки из `app.js` (результаты, проблемы) в теги `<template>` в `index.html`.
+□ **Commit E: Schema-Driven UI (TemplateRenderer)**
+  - Создать `js/core/templateRenderer.js`.
+  - Перенести рендеринг панелей (Diagnostics, Readonly, Form) из `app.js` в шаблоны.
+  - Сократить `index.html` (убрать дубли `screen-work-l3`, статичные секции очередей заменить на `data-template` / `data-queue`).
+  - `openWork` в `app.js` сокращается до вызова `TemplateRenderer.render()`.
 
-□ Commit F: Разделение `app.js` на модули.
-Разбить монолит (1000+ строк) на папку `js/ui/`: `queue.js`, `form.js`, `l3.js`, `results.js`, `modals.js`. Оставить в `app.js` только `init()` и роутинг.
+□ **Commit F: Унификация очередей (QueueRenderer)**
+  - Одна секция `#screen-queue` в HTML вместо `screen-queue`, `screen-queue-l2`, `screen-queue-l3`.
+  - Ярлыки ("Зарегистрировано", "Решено") берутся из `level.queue.doneLabel`.
+  - Удаление `queueScreen`, `queueList` из манифестов.
 
-## ⚙️ Технический долг и архитектура
+## ⚙️ Технический долг и архитектура (Остальное)
+- Commit G: Миграция на ES-модули.
+- Commit H: Рефакторинг `autotests.js` (убрать ручную сборку HTML).
+- CI/CD (GitHub Actions) + ESLint.
 
-□ Commit G: Миграция на ES-модули.
+? Восстановить декларативные tabs/actions в card-l3.json.
+   В D.5 они временно заменены на hardcoded renderIncoming /
+   renderDiagnostics в app.js. Вернуть data-driven подход с
+   data-slot-lookup вместо getElementById (совместно с TemplateRenderer). **!?**
+
+? Commit G: Миграция на ES-модули.
 Избавиться от глобальных `var` и `window.*`. Перейти на `import/export`.
 Требует внедрения сборщика (Vite или Webpack) и переписывания `smoke-test-dom.js` (отказ от `vm.runInContext` в пользу стандартных `import`).
 
-□ Commit H: Рефакторинг `autotests.js`.
+? Commit H: Рефакторинг `autotests.js`.
 Убрать ручную сборку HTML и прямые манипуляции с DOM. Перевести генерацию отчетов автотестов на использование `FormRenderer`, `Validator` и `TemplateRenderer`.
 
-□ Null-guard'ы в динамически рендерящихся обработчиках.
+? Null-guard'ы в динамически рендерящихся обработчиках.
 В `FormRenderer` и `runAutotests*` при работе с `getElementById(…)` без проверки на `null`. Ввести привычку: `const el = getElementById(...); if (!el) return;`.
 
-□ CI/CD (GitHub Actions).
+? CI/CD (GitHub Actions).
 Настроить автоматический запуск `npm run build` и `npm test` при каждом пуше в `main` и `develop`. Смоук-тест теперь покрывает все уровни, поэтому ценность CI высокая.
 
-□ Строгий линтинг.
+? Строгий линтинг.
 Подключить ESLint и Prettier для поддержания единого стиля кода.
 
-□ Сценарии (Scenario Packs).
+? Сценарии (Scenario Packs).
 Возможность загружать разные наборы задач (например, «Онбординг новичка», «Продвинутый уровень: Интеграции») через выбор манифеста.
 
 ## 🎨 UI/UX Улучшения
