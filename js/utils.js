@@ -7,15 +7,8 @@ function fillSelect(sel, items) {
   sel.appendChild(def);
   for (const it of items) {
     const opt = document.createElement("option");
-    // opt.value = it.value;
-    // opt.textContent = it.label;
-    if (typeof it === "string") {
-      opt.value = it;
-      opt.textContent = it;
-    } else {
-      opt.value = it.value;
-      opt.textContent = it.label;
-    }
+    opt.value = it.value;
+    opt.textContent = it.label;
     sel.appendChild(opt);
   }
 }
