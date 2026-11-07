@@ -34,5 +34,6 @@ var DataStore = {
     1: SCHEMA_L1,
     2: SCHEMA_L2,
     3: SCHEMA_L3
-  })
+  }),
+  getProblemMethods: () => PROBLEM_METHODS
 };

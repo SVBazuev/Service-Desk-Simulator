@@ -98,10 +98,9 @@ var Validator = {
       const expectedIncidents = problemDef ? problemDef.incidentsLinked : [ticket.id];
 
       const rfcOk = this.l3CheckKeywords(formData.rfc, ticket.rootKeywords).ok;
-      const incErr = formData.checked.length !== expectedIncidents.length || !expectedIncidents.every(id => formData.checked.includes(id));
-
+      const incErr = formData.incidents.length !== expectedIncidents.length || !expectedIncidents.every(id => formData.incidents.includes(id));
       if (incErr) errs.push("Связанные инциденты");
-      comparison.push({ field: "Связанные инциденты", value: formData.checked.join(", "), expected: expectedIncidents.join(", "), isError: incErr, explain: incErr ? "Отметьте все обращения." : "" });
+      comparison.push({ field: "Связанные инциденты", value: formData.incidents.join(", "), expected: expectedIncidents.join(", "), isError: incErr, explain: incErr ? "Отметьте все обращения." : "" });
 
       const addComp = (f, v, e, exp) => { if (v !== e) errs.push(f); comparison.push({ field: f, value: v, expected: e, isError: v !== e, explain: exp }); };
       addComp("Влияние", formData.impact, ticket.problem?.impact, "");

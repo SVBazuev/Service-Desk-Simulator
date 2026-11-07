@@ -247,6 +247,7 @@
             <div class="panel-title">Карточка решения</div>
           </header>
           <div class="panel-body">
+            <!-- Шапка с readonly-данными (остается без изменений) -->
             <div class="ro-grid" style="margin-bottom: 12px;">
               <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val" id="l3-ro-num">-</span></div>
               <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val" id="l3-ro-prod">-</span></div>
@@ -254,78 +255,10 @@
               <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val" id="l3-ro-sla">-</span></div>
             </div>
 
-            <div class="form-grid">
-              <label class="form-field full">
-                <span class="form-label">Корневая причина (своими словами) *</span>
-                <textarea id="l3-root" placeholder="Опишите первопричину: что именно и почему сломалось"></textarea>
-              </label>
-              <label class="form-field full">
-                <span class="form-label">Обходное решение (workaround) *</span>
-                <select id="l3-workaround"></select>
-              </label>
-              <label class="form-field full">
-                <span class="form-label">Радикальное решение *</span>
-                <select id="l3-radical"></select>
-              </label>
-              <label class="form-field full">
-                <span class="form-label">Исход обращения *</span>
-                <select id="l3-outcome">
-                  <option value="resolved">Решено (инцидент закрыт, проблемы нет)</option>
-                  <option value="new_problem">Новая проблема (требуется завести Problem Record)</option>
-                  <option value="known_error">Известная ошибка (привязка к существующей проблеме, ждем фикс)</option>
-                  <option value="fixed_problem">Исправленная проблема (привязка к закрытой проблеме, рецидив)</option>
-                </select>
-              </label>
+            <!-- ДИНАМИЧЕСКАЯ ФОРМА (вместо старых полей) -->
+            <div id="l3-dynamic-form" class="form-grid"></div>
 
-              <label class="form-field full" id="l3-problem-link-block" style="display: none;">
-                <span class="form-label">Связанная проблема *</span>
-                <select id="l3-problem-link"></select>
-                <div style="font-size: 12px; color: var(--sub); margin-top: 4px;">
-                  <i>Подсказка: если проблема помечена как «Исправлена», а клиент снова столкнулся с ошибкой - выбирайте исход «Исправленная проблема».</i>
-                </div>
-              </label>
-
-            <div id="l3-problem-block" style="display: none; margin-top: 16px; border: 1px solid #c7d2fe; border-radius: 8px; padding: 16px; background: #f5f3ff;">
-              <div style="font-weight: 600; color: #4c1d95; margin-bottom: 12px;">Управление проблемами: Problem Record *</div>
-              <div class="form-grid">
-                <label class="form-field full">
-                  <span class="form-label">Связанные инциденты (все обращения с этой первопричиной)</span>
-                  <div id="l3-prob-incidents" class="l3-prob-incidents"></div>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">Влияние *</span>
-                  <select id="l3-prob-impact">
-                    <option value="высокое">высокое - затронуты бизнес-процессы нескольких организаций / отделов</option>
-                    <option value="среднее">среднее - затронут процесс одной организации / отдела</option>
-                    <option value="низкое">низкое - точечное, есть лёгкая обходка</option>
-                  </select>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">Вероятность повторения *</span>
-                  <select id="l3-prob-prob">
-                    <option value="высокая">высокая - будет повторяться, пока не выйдет фикс</option>
-                    <option value="средняя">средняя - будет повторяться при определённых условиях</option>
-                    <option value="низкая">низкая</option>
-                  </select>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">Владелец проблемы *</span>
-                  <select id="l3-prob-owner"></select>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">Метод расследования *</span>
-                  <select id="l3-prob-method"></select>
-                </label>
-                <label class="form-field full">
-                  <span class="form-label">RFC - запрос на изменение для разработчиков *</span>
-                  <textarea id="l3-prob-rfc" placeholder="Что именно исправить в продукте и какое обходное решение действует до фикса"></textarea>
-                </label>
-              </div>
-              <div class="prio-hint" style="margin-top: 12px; background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12px;">
-                <b>Внимание:</b> Problem Record нужен, когда одна первопричина объясняет несколько инцидентов (у этой или других организаций). Владелец - кто ведёт расследование (обычно L3 или разработчик). RFC должен описывать конкретное изменение в продукте.
-              </div>
-            </div>
-
+            <!-- Блок подсказки (остается) -->
             <div id="l3-submit-hint" class="prio-hint" style="display: none; margin-top: 12px; background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12.5px;"></div>
           </div>
           <footer class="panel-footer">

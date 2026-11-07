@@ -8,3 +8,6 @@ npm-debug.log*
 # Системные файлы ОС
 .DS_Store
 Thumbs.db
+
+# Dev tools
+.dev_tools/

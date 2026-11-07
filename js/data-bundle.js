@@ -1810,6 +1810,92 @@ var SCHEMA_L3 = {
       "validate": {
         "rule": "l3_logic"
       }
+    },
+    {
+      "id": "problemBlock",
+      "type": "composite",
+      "title": "Управление проблемами: Problem Record *",
+      "showIf": {
+        "field": "outcome",
+        "eq": "new_problem"
+      },
+      "fields": [
+        {
+          "id": "incidents",
+          "label": "Связанные инциденты",
+          "type": "checkboxGroup",
+          "source": "problem.incidentsLinked",
+          "fallback": "currentTicket"
+        },
+        {
+          "id": "impact",
+          "label": "Влияние *",
+          "type": "select",
+          "options": [
+            {
+              "value": "высокое",
+              "label": "высокое - затронуты бизнес-процессы нескольких организаций"
+            },
+            {
+              "value": "среднее",
+              "label": "среднее - затронут процесс одной организации"
+            },
+            {
+              "value": "низкое",
+              "label": "низкое"
+            }
+          ]
+        },
+        {
+          "id": "prob",
+          "label": "Вероятность повторения *",
+          "type": "select",
+          "options": [
+            {
+              "value": "высокая",
+              "label": "высокая"
+            },
+            {
+              "value": "средняя",
+              "label": "средняя"
+            },
+            {
+              "value": "низкая",
+              "label": "низкая"
+            }
+          ]
+        },
+        {
+          "id": "owner",
+          "label": "Владелец проблемы *",
+          "type": "select",
+          "source": "EMPLOYEES_L3"
+        },
+        {
+          "id": "method",
+          "label": "Метод расследования *",
+          "type": "select",
+          "source": "PROBLEM_METHODS"
+        },
+        {
+          "id": "rfc",
+          "label": "RFC - запрос на изменение для разработчиков *",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "id": "linkedProb",
+      "label": "Связанная проблема *",
+      "type": "select",
+      "source": "PROBLEMS",
+      "showIf": {
+        "field": "outcome",
+        "in": [
+          "known_error",
+          "fixed_problem"
+        ]
+      }
     }
   ]
 };

@@ -71,13 +71,13 @@ function generateDetailsHtml(res) {
 function runAutotests() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
-  
+
   // Сохраняем состояние
   const backupResults = JSON.parse(JSON.stringify(state.results));
   const backupId = state.currentId;
   const backupLevel = state.level;
   state.level = 1;
-  
+
   let html = "";
   let testsPassed = 0;
   let testsFailed = 0;
@@ -85,7 +85,7 @@ function runAutotests() {
   for (const t of TICKETS) {
     openWork(t.id);
     const et = t.etalon;
-    
+
     // ТЕСТ 1: Правильно
     document.getElementById("card-org").value = et.org; onCardOrg();
     document.getElementById("card-cont").value = et.cont;
@@ -96,9 +96,9 @@ function runAutotests() {
     document.getElementById("card-sub").value = et.sub;
     document.getElementById("card-imp").value = et.imp;
     document.getElementById("card-urg").value = et.urg; onCardPri();
-    
+
     register(); hideModal("modal-reg");
-    
+
     const res1 = state.results[t.id];
     const pass1 = res1 && res1.ok;
     if (pass1) testsPassed++; else testsFailed++;
@@ -106,8 +106,19 @@ function runAutotests() {
     // ТЕСТ 2: Ломаем
     delete state.results[t.id];
     openWork(t.id);
+    // =========
+    // console.log("[L1-T2]", t.id,
+    //   "state.level=", state.level,
+    //   "state.currentId=", state.currentId,
+    //   "card-org=", document.getElementById("card-org") && document.getElementById("card-org").value,
+    //   "card-type=", document.getElementById("card-type") && document.getElementById("card-type").value,
+    //   "card-imp=", document.getElementById("card-imp") && document.getElementById("card-imp").value,
+    //   "card-urg=", document.getElementById("card-urg") && document.getElementById("card-urg").value,
+    //   "orgVersions=", JSON.stringify(state.orgVersions)
+    // );
+    // ==========
     const wrongOrgObj = ORGS.find(o => o.id !== et.org);
-    document.getElementById("card-org").value = wrongOrgObj.id; onCardOrg(); 
+    document.getElementById("card-org").value = wrongOrgObj.id; onCardOrg();
     const wrongContacts = getContactsByOrg(wrongOrgObj.id);
     if(wrongContacts.length > 0) document.getElementById("card-cont").value = wrongContacts[0].id;
     document.getElementById("card-chan").value = et.chan === "Email" ? "Телефон" : "Email";
@@ -117,9 +128,15 @@ function runAutotests() {
     state.orgVersions = []; renderVerList();
     document.getElementById("card-imp").value = et.imp === "высокая" ? "низкая" : "высокая";
     document.getElementById("card-urg").value = et.urg === "высокая" ? "низкая" : "высокая"; onCardPri();
-    
+
     register(); hideModal("modal-reg");
     const res2 = state.results[t.id];
+    // const pass2 = res2 && res2.errs.length > 0;
+    // console.log("[L1-T2]", t.id,
+    //   "res2=", JSON.stringify(res2),
+    //   "card-org-after=", document.getElementById("card-org").value,
+    //   "card-type-after=", document.getElementById("card-type").value
+    // );
     const pass2 = res2 && res2.errs.length > 0;
     if (pass2) testsPassed++; else testsFailed++;
 
@@ -130,42 +147,42 @@ function runAutotests() {
       <td style="vertical-align: top;">${generateDetailsHtml(res2)}</td>
     </tr>`;
   }
-  
+
   reportBody.innerHTML = html;
-  
+
   // Восстанавливаем состояние
   state.results = backupResults;
   state.currentId = backupId;
   state.level = backupLevel;
-  
+
   renderQueue(); showScreen("screen-queue"); showModal("modal-autotest");
 }
 
 function runAutotestsL2() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
-  
+
   // Сохраняем состояние и загруженность
   const backupResults = JSON.parse(JSON.stringify(state.resultsL2));
   const backupId = state.currentId;
   const backupLevel = state.level;
   const backupWorkloads = EMPLOYEES.map(e => ({ id: e.id, workload: e.workload }));
-  
+
   state.level = 2;
-  
+
   let html = "";
   let testsPassed = 0;
   let testsFailed = 0;
 
   for (const t of TICKETS_L2) {
     openWork(t.id);
-    
+
     // ТЕСТ 1: Правильно
-    document.getElementById("card-assignee-l2").value = t.expectedAssignee;
-    document.getElementById("card-comment-l2").value = t.expectedComment;
+    document.getElementById("card-assignee").value = t.expectedAssignee;
+    document.getElementById("card-comment").value = t.expectedComment;
     validate();
     assignL2(); hideModal("modal-assign");
-    
+
     const res1 = state.resultsL2[t.id];
     const pass1 = res1 && res1.ok;
     if (pass1) testsPassed++; else testsFailed++;
@@ -173,21 +190,21 @@ function runAutotestsL2() {
     // ТЕСТ 2: Ломаем
     delete state.resultsL2[t.id];
     openWork(t.id);
-    
+
     const wrongAssignee = EMPLOYEES.find(e => e.id !== t.expectedAssignee && e.status === "В отпуске") || EMPLOYEES.find(e => e.id !== t.expectedAssignee);
     const wrongComment = COMMENTS_L2.find(c => c.id !== t.expectedComment);
-    
+
     // Ломаем поля карточки
     document.getElementById("card-imp").value = t.imp === "высокая" ? "низкая" : "высокая";
     document.getElementById("card-urg").value = t.urg === "высокая" ? "низкая" : "высокая";
     onCardPri();
-    
+
     // Ломаем назначение
-    document.getElementById("card-assignee-l2").value = wrongAssignee.id;
-    document.getElementById("card-comment-l2").value = wrongComment.id;
+    document.getElementById("card-assignee").value = wrongAssignee.id;
+    document.getElementById("card-comment").value = wrongComment.id;
     validate();
     assignL2(); hideModal("modal-assign");
-    
+
     const res2 = state.resultsL2[t.id];
     const pass2 = res2 && res2.errs.length > 0;
     if (pass2) testsPassed++; else testsFailed++;
@@ -199,20 +216,19 @@ function runAutotestsL2() {
       <td style="vertical-align: top;">${generateDetailsHtml(res2)}</td>
     </tr>`;
   }
-  
+
   reportBody.innerHTML = html;
-  
+
   // Восстанавливаем состояние и загруженность
   state.resultsL2 = backupResults;
   state.currentId = backupId;
   state.level = backupLevel;
-  
+
   for (const b of backupWorkloads) {
     const emp = EMPLOYEES.find(e => e.id === b.id);
     if (emp) emp.workload = b.workload;
   }
-  fillAssigneeSelect();
-  
+
   renderQueue(); showScreen("screen-queue-l2"); showModal("modal-autotest");
 }
 
@@ -222,7 +238,7 @@ function runAutotestsL3() {
   const backupResults = JSON.parse(JSON.stringify(state.resultsL3));
   const backupId = state.currentId;
   const backupLevel = state.level;
-  const backupL3 = JSON.parse(JSON.stringify(state.l3));
+  const backupL3 = { ...state.l3 };
 
   state.level = 3;
 
@@ -235,22 +251,27 @@ function runAutotestsL3() {
     l3RequestClarify();
 
     // ТЕСТ 1: Правильно
-    document.getElementById("l3-root").value = ("причина: " + t.rootKeywords.join(", "));
-    document.getElementById("l3-workaround").value = String(t.workaroundCorrect);
-    document.getElementById("l3-radical").value = String(t.radicalCorrect);
-    document.getElementById("l3-outcome").value = t.outcome.correct;
-    onL3Outcome();
+    document.getElementById("card-root").value = ("причина: " + t.rootKeywords.join(", "));
+    document.getElementById("card-workaround").value = String(t.workaroundCorrect);
+    document.getElementById("card-radical").value = String(t.radicalCorrect);
+    document.getElementById("card-outcome").value = t.outcome.correct;
+
+    // Вызываем change, чтобы сработали showIf
+    document.getElementById("card-outcome").dispatchEvent(new Event('change', { bubbles: true }));
+
     if (t.outcome.correct === "new_problem") {
-  document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = true);
-  document.getElementById("l3-prob-impact").value = t.problem.impact;
-  document.getElementById("l3-prob-prob").value = t.problem.prob;
-  document.getElementById("l3-prob-owner").value = t.problem.owner;
-  document.getElementById("l3-prob-method").value = t.problem.method;
-  document.getElementById("l3-prob-rfc").value = (PROBLEMS.find(p => p.id === t.problem.record)?.rfc) || ("исправить: " + t.rootKeywords.join(", "));
-} else if (t.linkedProblemId) {
-  document.getElementById("l3-problem-link").value = t.linkedProblemId;
-}
+      document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = true);
+      document.getElementById("card-impact").value = t.problem.impact;
+      document.getElementById("card-prob").value = t.problem.prob;
+      document.getElementById("card-owner").value = t.problem.owner;
+      document.getElementById("card-method").value = t.problem.method;
+      document.getElementById("card-rfc").value = (PROBLEMS.find(p => p.id === t.problem.record)?.rfc) || ("исправить: " + t.rootKeywords.join(", "));
+    } else if (t.linkedProblemId) {
+      document.getElementById("card-linkedProb").value = t.linkedProblemId;
+    }
+
     if (t.duplicateOf) document.getElementById("l3-dup-of").value = t.duplicateOf;
+
     l3Validate();
     l3Submit(); hideModal("modal-reg");
 
@@ -261,19 +282,23 @@ function runAutotestsL3() {
     // ТЕСТ 2: Ломаем
     delete state.resultsL3[t.id];
     openL3Work(t.id);
-    document.getElementById("l3-root").value = "неизвестно";
-    document.getElementById("l3-workaround").value = String((t.workaroundCorrect + 1) % t.workarounds.length);
-    document.getElementById("l3-radical").value = String((t.radicalCorrect + 1) % t.radical.length);
-    document.getElementById("l3-outcome").value = t.outcome.correct === "known_error" ? "resolved" : "known_error";
-    onL3Outcome();
+
+    document.getElementById("card-root").value = "неизвестно";
+    document.getElementById("card-workaround").value = String((t.workaroundCorrect + 1) % t.workarounds.length);
+    document.getElementById("card-radical").value = String((t.radicalCorrect + 1) % t.radical.length);
+    document.getElementById("card-outcome").value = t.outcome.correct === "known_error" ? "resolved" : "known_error";
+
+    document.getElementById("card-outcome").dispatchEvent(new Event('change', { bubbles: true }));
+
     if (t.problem) {
       document.querySelectorAll(".l3-prob-inc-check").forEach(c => c.checked = false);
-      document.getElementById("l3-prob-impact").value = t.problem.impact === "высокое" ? "низкое" : "высокое";
-      document.getElementById("l3-prob-prob").value = t.problem.prob === "высокая" ? "низкая" : "высокая";
-      document.getElementById("l3-prob-owner").value = EMPLOYEES_L3.find(e => e.id !== t.problem.owner)?.id || t.problem.owner;
-      document.getElementById("l3-prob-method").value = PROBLEM_METHODS.find(m => m !== t.problem.method) || t.problem.method;
-      document.getElementById("l3-prob-rfc").value = "неизвестно";
+      document.getElementById("card-impact").value = t.problem.impact === "высокое" ? "низкое" : "высокое";
+      document.getElementById("card-prob").value = t.problem.prob === "высокая" ? "низкая" : "высокая";
+      document.getElementById("card-owner").value = EMPLOYEES_L3.find(e => e.id !== t.problem.owner)?.id || t.problem.owner;
+      document.getElementById("card-method").value = PROBLEM_METHODS.find(m => m !== t.problem.method) || t.problem.method;
+      document.getElementById("card-rfc").value = "неизвестно";
     }
+
     if (t.duplicateOf) {
       document.getElementById("l3-dup-of").value = "";
       const other = TICKETS_L3.find(x => x.id !== t.id && !x.duplicateOf);
@@ -283,6 +308,7 @@ function runAutotestsL3() {
       sel.appendChild(opt);
       sel.value = other.id;
     }
+
     l3Validate();
     l3Submit(); hideModal("modal-reg");
 
