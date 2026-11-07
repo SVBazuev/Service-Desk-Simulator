@@ -39,98 +39,40 @@
     <main class="queue-list" id="queue-list"></main>
   </section>
 
+  <!-- УНИВЕРСАЛЬНОЕ РАБОЧЕЕ МЕСТО (L1-L4) -->
   <section id="screen-work" class="screen">
     <header class="topbar">
-      <div class="topbar-title" id="work-title">Рабочее место</div>
-      <div class="topbar-info">Обращение: <span id="work-num">-</span></div>
+      <div class="topbar-title" data-slot="work-title">Рабочее место</div>
+      <div class="topbar-info">Обращение: <span data-slot="work-num">-</span></div>
       <div class="topbar-actions">
         <button id="btn-org-list-work" class="btn">Справочник организаций</button>
         <button id="btn-emp-list-work" class="btn">Справочник сотрудников</button>
-        <button id="btn-kb" class="btn">База знаний</button>
+        <button id="btn-kb-work" class="btn">База знаний</button>
+        <button id="btn-problems-work" class="btn" style="display:none;">Проблемы</button>
         <button id="btn-back-queue" class="btn">К папке потока</button>
       </div>
     </header>
     <main class="work-wrap">
-      <div class="work-grid">
+      <div class="work-grid" data-slot="work-grid">
+        <!-- Входящее обращение -->
         <section class="panel">
-          <header class="panel-header">
-            <div class="panel-title">Входящее обращение</div>
-          </header>
-          <div class="panel-body">
-            <div class="kv">
-              <div class="kv-row"><span class="kv-key">Организация</span><span class="kv-val" id="frm-org"></span></div>
-              <div class="kv-row"><span class="kv-key">Контакт</span><span class="kv-val" id="frm-cont"></span></div>
-              <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val" id="frm-chan"></span></div>
-              <div class="kv-row"><span class="kv-key">Заголовок</span><span class="kv-val" id="frm-title"></span></div>
-            </div>
-
-            <div class="text-block">
-              <div class="text-block-title">Текст обращения</div>
-              <div class="text-block-content" id="frm-text"></div>
-            </div>
-
-            <div id="wrap-clarify-btn" style="margin-top: 10px;">
-              <button id="btn-clarify" class="btn primary" style="width: 100%; border: 1px dashed #93c5fd; background: #eff6ff; color: #1e40af;">Написать заказчику и уточнить детали</button>
-            </div>
-
-            <div id="clarify-block" style="display: none;">
-              <div class="text-block" style="border-color: #c7d2fe; background-color: #eef2ff;">
-                <div class="text-block-title" style="background-color: #c7d2fe; color: #3730a3; font-weight: 600;">Ответ заказчика</div>
-                <div class="text-block-content" id="frm-clarify-text" style="color: #1e3a8a; font-style: italic;"></div>
-              </div>
-            </div>
-          </div>
+          <header class="panel-header"><div class="panel-title">Входящее обращение</div></header>
+          <div class="panel-body" data-slot="incoming-body"></div>
         </section>
 
+        <!-- Диагностика (L3/L4; скрыт для L1/L2) -->
+        <section class="panel" data-slot="extra-panel" style="display:none;">
+          <header class="panel-header"><div class="panel-title" data-slot="extra-title">Диагностика</div></header>
+          <div class="panel-body" data-slot="extra-body"></div>
+        </section>
+
+        <!-- Карточка -->
         <section class="panel">
-          <header class="panel-header">
-            <div class="panel-title">Карточка обращения</div>
-          </header>
-          <div class="panel-body">
-
-            <!-- ДИНАМИЧЕСКАЯ ФОРМА -->
-            <div class="form-grid" id="dynamic-form-container"></div>
-
-            <!-- БЛОК ВЕРСИЙ (вынесен отдельно) -->
-            <div style="margin-top: 12px;">
-              <label class="form-field full">
-                <span class="form-label">Продукты и версии</span>
-                <div id="ver-list" class="ver-list"></div>
-                <div class="ver-add-wrap">
-                  <div class="ver-add-title">Добавить продукт</div>
-                  <div class="ver-add-row">
-                    <select id="sel-add-prod"></select>
-                    <button type="button" id="btn-add-prod" class="btn">Добавить продукт</button>
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            <div id="prio-hint" class="prio-hint" style="display: none;">
-              <b>Внимание:</b> По умолчанию для этого типа обращения установлен <b>средний</b> приоритет (средняя важность и срочность). Вы можете изменить его вручную, если заказчик явно указал на срочность или высокую важность. Подробнее в Базе знаний: <span class="kb-link" onclick="goToKbTab('Важность и срочность. Матрица приоритета')">«Матрица приоритета»</span>.
-            </div>
-
-            <div class="ro-grid">
-              <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val" id="ro-num">-</span></div>
-              <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val" id="ro-resp">текущий регистратор</span></div>
-              <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-              <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>
-            </div>
-
-            <div class="auto-box" id="auto-box">
-              <div class="auto-title">Автоматический расчёт</div>
-              <div class="auto-grid">
-                <div class="auto-item"><div class="auto-l">Приоритет</div><div class="auto-v" id="auto-prio">-</div></div>
-                <div class="auto-item"><div class="auto-l">Срок реакции</div><div class="auto-v" id="auto-react">-</div></div>
-                <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" id="auto-sol">-</div></div>
-              </div>
-            </div>
-
-          </div>
+          <header class="panel-header"><div class="panel-title" data-slot="form-title">Карточка обращения</div></header>
+          <div class="panel-body" data-slot="form-body"></div>
           <footer class="panel-footer">
-            <button id="btn-cancel" class="btn">Отменить</button>
-            <button id="btn-reg" class="btn primary" disabled>Зарегистрировать</button>
-            <button id="btn-assign-l2" class="btn primary" style="display: none;" disabled>Изменить ответственного</button>
+            <button id="btn-work-cancel" class="btn">Отменить</button>
+            <button id="btn-work-submit" class="btn primary" disabled>Сохранить</button>
           </footer>
         </section>
       </div>
@@ -164,110 +106,6 @@
       </div>
     </header>
     <main class="queue-list" id="queue-list-l3"></main>
-  </section>
-
-  <section id="screen-work-l3" class="screen">
-    <header class="topbar">
-      <div class="topbar-title" id="work-title-l3">Рабочее место инженера</div>
-      <div class="topbar-info">Обращение: <span id="work-num-l3">-</span></div>
-      <div class="topbar-actions">
-        <button id="btn-org-list-work-l3" class="btn">Справочник организаций</button>
-        <button id="btn-emp-list-work-l3" class="btn">Справочник сотрудников</button>
-        <button id="btn-kb-work-l3" class="btn">База знаний</button>
-        <button id="btn-problems-work-l3" class="btn">Проблемы</button>
-        <button id="btn-back-queue-l3" class="btn">К папке потока</button>
-      </div>
-    </header>
-    <main class="work-wrap">
-      <div class="work-grid">
-        <section class="panel">
-          <header class="panel-header">
-            <div class="panel-title">Входящее обращение</div>
-          </header>
-          <div class="panel-body">
-            <div class="kv">
-              <div class="kv-row"><span class="kv-key">Организация</span><span class="kv-val" id="l3-frm-org"></span></div>
-              <div class="kv-row"><span class="kv-key">Контакт</span><span class="kv-val" id="l3-frm-cont"></span></div>
-              <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val" id="l3-frm-chan"></span></div>
-              <div class="kv-row"><span class="kv-key">Тип / Приоритет</span><span class="kv-val" id="l3-frm-prio"></span></div>
-            </div>
-
-            <div class="text-block">
-              <div class="text-block-title">Заголовок</div>
-              <div class="text-block-content" id="l3-frm-title" style="font-weight: 600;"></div>
-            </div>
-
-            <div class="text-block">
-              <div class="text-block-title">Текст обращения</div>
-              <div class="text-block-content" id="l3-frm-text"></div>
-            </div>
-
-            <div id="l3-clarify-block" style="display: none;">
-              <div class="text-block" style="border-color: #c7d2fe; background-color: #eef2ff;">
-                <div class="text-block-title" style="background-color: #c7d2fe; color: #3730a3; font-weight: 600;">Ответ заказчика</div>
-                <div class="text-block-content" id="l3-clarify-text" style="color: #1e3a8a; font-style: italic;"></div>
-              </div>
-            </div>
-
-            <div id="l3-dup-block" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; font-size: 13px;">
-              <b>Обратите внимание:</b> похоже, это повтор уже разобранных симптомов. Проверьте, не было ли подобного ранее, и есть ли Known Error с обходным решением.
-            </div>
-
-            <div id="l3-dup-link" style="display: none; margin-top: 8px; font-size: 13px;">
-              <span class="kv-key">Связано с:</span>
-              <select id="l3-dup-of" style="min-width: 220px;"></select>
-            </div>
-
-            <div id="l3-dup-hint" style="display: none; margin-top: 8px; font-size: 12px; color: var(--warn);">
-              ⚠ Обращение похоже на повтор. Укажите, с каким обращением оно связано (кнопка выше), и примените обходное решение из Known Error.
-            </div>
-
-            <button id="btn-l3-clarify" class="btn primary" style="display: none; width: 100%; border: 1px dashed #93c5fd; background: #eff6ff; color: #1e40af;">Запросить уточняющую информацию у заказчика</button>
-          </div>
-        </section>
-
-        <section class="panel">
-          <header class="panel-header">
-            <div class="panel-title">Диагностика</div>
-          </header>
-          <div class="panel-body">
-            <div id="l3-diag-tabs" class="l3-diag-tabs"></div>
-            <div class="text-block">
-              <div class="text-block-title" id="l3-diag-title">Выберите инструмент диагностики</div>
-              <div class="text-block-content" id="l3-diag-content" style="font-family: Consolas, Menlo, monospace; font-size: 12.5px; white-space: pre-wrap; line-height: 1.55;"></div>
-            </div>
-            <div class="prio-hint" style="font-size: 12.5px;">
-              <b>Подсказка:</b> лог говорит <i>что</i> сломалось, конфигурация - <i>что изменилось</i>, лицензия - <i>куплено ли вообще</i>. Сравнивайте «как сейчас» и «как было до сбоя».
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <header class="panel-header">
-            <div class="panel-title">Карточка решения</div>
-          </header>
-          <div class="panel-body">
-            <!-- Шапка с readonly-данными (остается без изменений) -->
-            <div class="ro-grid" style="margin-bottom: 12px;">
-              <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val" id="l3-ro-num">-</span></div>
-              <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val" id="l3-ro-prod">-</span></div>
-              <div class="ro-row"><span class="ro-key">Срочность / Важность</span><span class="ro-val" id="l3-ro-imp">-</span></div>
-              <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val" id="l3-ro-sla">-</span></div>
-            </div>
-
-            <!-- ДИНАМИЧЕСКАЯ ФОРМА (вместо старых полей) -->
-            <div id="l3-dynamic-form" class="form-grid"></div>
-
-            <!-- Блок подсказки (остается) -->
-            <div id="l3-submit-hint" class="prio-hint" style="display: none; margin-top: 12px; background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 12.5px;"></div>
-          </div>
-          <footer class="panel-footer">
-            <button id="btn-l3-cancel" class="btn">Отменить</button>
-            <button id="btn-l3-submit" class="btn primary" disabled>Закрыть обращение</button>
-          </footer>
-        </section>
-      </div>
-    </main>
   </section>
 
   <section id="screen-res" class="screen">

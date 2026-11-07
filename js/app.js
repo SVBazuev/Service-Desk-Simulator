@@ -23,6 +23,10 @@ function resetState() {
   resetWorkloads();
 }
 
+function q(sel) { return document.querySelector(sel); }
+
+// ============ INIT ============
+
 function init() {
   bootstrapWorkloads();
   bootstrapKb();
@@ -44,35 +48,29 @@ function init() {
     renderLevelCards();
   });
 
-  document.getElementById("btn-clarify").addEventListener("click", requestClarification);
-  document.getElementById("btn-reg").addEventListener("click", register);
+  document.getElementById("btn-work-submit").addEventListener("click", handleSubmit);
+  document.getElementById("btn-work-cancel").addEventListener("click", goBackFromWork);
+  document.getElementById("btn-back-queue").addEventListener("click", goBackFromWork);
 
-  document.getElementById("btn-assign-l2").addEventListener("click", assignL2);
-  document.getElementById("btn-start-l2-work").addEventListener("click", () => { hideModal("modal-l2-intro"); showScreen("screen-queue-l2"); });
-  document.getElementById("btn-start-l3-work").addEventListener("click", () => { hideModal("modal-l3-intro"); showScreen("screen-queue-l3"); });
-
-  document.getElementById("btn-l3-submit").addEventListener("click", l3Submit);
-  document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
-  document.getElementById("btn-back-queue-l3").addEventListener("click", l3GoBack);
-
-  document.getElementById("l3-dup-of").addEventListener("change", () => {
-    const schema = DataStore.getSchema(state.level);
-    FormRenderer.validate("l3-dynamic-form", schema, "btn-l3-submit", "l3-submit-hint");
+  document.getElementById("btn-start-l2-work").addEventListener("click", () => {
+    hideModal("modal-l2-intro");
+    showScreen("screen-queue-l2");
+  });
+  document.getElementById("btn-start-l3-work").addEventListener("click", () => {
+    hideModal("modal-l3-intro");
+    showScreen("screen-queue-l3");
   });
 
-  const goBack = () => {
-    state.currentId = null;
-    renderQueue();
-    const lvl = DataStore.getLevel(state.level);
-    if (lvl && lvl.queueScreen) showScreen(lvl.queueScreen);
-  };
-
-  document.getElementById("btn-cancel").addEventListener("click", goBack);
-  document.getElementById("btn-back-queue").addEventListener("click", goBack);
+  // Делегирование кликов внутри рабочего экрана
+  document.getElementById("screen-work").addEventListener("click", onWorkClick);
 
   document.querySelectorAll(".modal-close, [data-close]").forEach(b => {
-    b.addEventListener("click", () => { const id = b.getAttribute("data-close"); if (id) hideModal(id); });
+    b.addEventListener("click", () => {
+      const id = b.getAttribute("data-close");
+      if (id) hideModal(id);
+    });
   });
+
   document.querySelectorAll("[id^='btn-org-list']").forEach(b => b.addEventListener("click", openOrgList));
   document.querySelectorAll("[id^='btn-emp-list']").forEach(b => b.addEventListener("click", () =>
     openEmpList(DataStore.getLevelWorkflow(state.level) === "l3" ? DataStore.getEmployeesL3() : DataStore.getEmployees())
@@ -81,19 +79,16 @@ function init() {
   document.querySelectorAll("[id^='btn-problems']").forEach(b => b.addEventListener("click", openProblems));
 
   document.getElementById("btn-res-restart").addEventListener("click", restart);
+
   document.getElementById("btn-reg-ok").addEventListener("click", () => {
     hideModal("modal-reg");
-    if (DataStore.getLevelWorkflow(state.level) === "l3") { l3GoBack(); return; }
-    goBack();
+    goBackFromWork();
   });
   document.getElementById("btn-assign-ok").addEventListener("click", () => {
     hideModal("modal-assign");
-    state.currentId = null;
-    renderQueue();
-    showScreen("screen-queue-l2");
+    goBackFromWork();
   });
 
-  // Wire btn-finish* via manifest
   DataStore.getLevels().forEach(lvl => {
     const btn = lvl.queueFinish ? document.getElementById(lvl.queueFinish) : null;
     if (btn) {
@@ -106,21 +101,37 @@ function init() {
   buildKb();
 }
 
-function updateProductSelect(org) {
-  const prods = org && org.products ? org.products.map(p => ({ value: p.name, label: p.name })) : [];
-  const uniqueProds = [];
-  const seen = new Set();
-  for (const p of prods) { if (!seen.has(p.value)) { seen.add(p.value); uniqueProds.push(p); } }
-  fillSelect(document.getElementById("card-prod"), uniqueProds);
+// ============ Делегированные действия ============
+
+function onWorkClick(e) {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const action = t.dataset.action;
+  if (action === 'clarify') requestClarification();
+  else if (action === 'clarify-l3') l3RequestClarify();
+  else if (action === 'add-prod') addProductToCard();
+  else if (action === 'diag-tab') switchDiagTab(t.dataset.tabId);
 }
 
-function requestClarification() {
-  const t = getTicket(state.currentId);
-  if (!t || !t.clarification) return;
-  document.getElementById("frm-clarify-text").textContent = t.clarification;
-  document.getElementById("clarify-block").style.display = "block";
-  document.getElementById("btn-clarify").style.display = "none";
+function handleSubmit() {
+  const wf = DataStore.getLevelWorkflow(state.level);
+  if (wf === 'l3') l3Submit();
+  else if (wf === 'l2') assignL2();
+  else register();
 }
+
+function goBackFromWork() {
+  state.currentId = null;
+  state.currentForm = null;
+  if (DataStore.getLevelWorkflow(state.level) === 'l3') {
+    state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
+  }
+  renderQueue();
+  const lvl = DataStore.getLevel(state.level);
+  if (lvl && lvl.queueScreen) showScreen(lvl.queueScreen);
+}
+
+// ============ Очередь ============
 
 function renderQueue() {
   const lvl = DataStore.getLevel(state.level);
@@ -175,133 +186,501 @@ function renderQueue() {
   if (finishBtn) finishBtn.disabled = done < tickets.length;
 }
 
-function openWork(id) {
-  const workflow = DataStore.getLevelWorkflow(state.level);
-  if (workflow === "l3") { openL3Work(id); return; }
+// ============ Универсальное рабочее место ============
 
+function openWork(id) {
   const t = getTicket(id);
   if (!t) return;
   state.currentId = id;
-  const isL2 = workflow === "l2";
 
-  // 1. Рендерим форму на основе схемы уровня
+  const lvl = DataStore.getLevel(state.level);
+  const workflow = lvl.workflow;
   const schema = DataStore.getSchema(state.level);
-  FormRenderer.render("dynamic-form-container", schema, {
-    btnId: isL2 ? "btn-assign-l2" : "btn-reg",
-    extraCheck: () => state.orgVersions && state.orgVersions.length > 0
-  });
 
-  // 2. Навешиваем обработчики на новые поля
-  document.getElementById("card-org").addEventListener("change", onCardOrg);
-  document.getElementById("card-prod").addEventListener("change", onCardProd);
-  document.getElementById("card-cat").addEventListener("change", onCardCat);
-  document.getElementById("card-imp").addEventListener("change", onCardPri);
-  document.getElementById("card-urg").addEventListener("change", onCardPri);
-  document.getElementById("card-type").addEventListener("change", onCardType);
-
-  // 3. Заполняем базовые списки опций
-  fillSelect(document.getElementById("card-org"), DataStore.getOrgs().map(o => ({value:o.id, label:o.name})));
-  fillSelect(document.getElementById("card-prod"), []);
-  fillSelect(document.getElementById("card-cat"), []);
-  fillSelect(document.getElementById("card-sub"), []);
-
-  if (isL2) {
-    fillSelect(document.getElementById("card-assignee"), DataStore.getEmployees().map(e => ({
-      value: e.id,
-      label: `${e.name} (${e.role}) • В работе: ${e.workload !== undefined ? e.workload : 0} - ${e.status}`
-    })));
-    fillSelect(document.getElementById("card-comment"), DataStore.getCommentsL2().map(c => ({value:c.id, label:c.text})));
+  if (workflow === "l3") {
+    state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
   }
 
-  // 4. Заполняем данные из тикета
+  // Шапка
+  q('[data-slot="work-title"]').textContent = lvl.workTitle || "Рабочее место";
+  q('[data-slot="work-num"]').textContent = t.id;
+  const probBtn = document.getElementById("btn-problems-work");
+  if (probBtn) probBtn.style.display = (workflow === "l3") ? "" : "none";
+
+  // Входящее
+  renderIncoming(t, workflow);
+
+  // Extra panel (диагностика L3/L4)
+  const extraPanel = q('[data-slot="extra-panel"]');
+  const workGrid = q('[data-slot="work-grid"]');
+  if (workflow === "l3" && Array.isArray(t.diagnostics) && t.diagnostics.length > 0) {
+    extraPanel.style.display = "";
+    q('[data-slot="extra-title"]').textContent = "Диагностика";
+    renderDiagnostics(t);
+    workGrid.classList.add("with-extra");
+  } else {
+    extraPanel.style.display = "none";
+    q('[data-slot="extra-body"]').innerHTML = "";
+    workGrid.classList.remove("with-extra");
+  }
+
+  // Карточка
+  const formBody = q('[data-slot="form-body"]');
+  formBody.innerHTML = "";
+
+  formBody.appendChild(buildReadonlyBlock(t, workflow));
+
+  const dynamicForm = document.createElement("div");
+  dynamicForm.className = "form-grid";
+  formBody.appendChild(dynamicForm);
+
+  if (workflow !== "l3") formBody.appendChild(buildVersionsWidget());
+  if (workflow === "l1") formBody.appendChild(buildPriorityHint());
+  if (workflow !== "l3") formBody.appendChild(buildAutoCalcBlock());
+
+  const hintEl = document.createElement("div");
+  hintEl.className = "prio-hint";
+  hintEl.style.cssText = "display:none; background:#fffbeb; border-color:#fde68a; color:#92400e; font-size:12.5px; margin-top:12px;";
+  formBody.appendChild(hintEl);
+
+  const submitBtn = document.getElementById("btn-work-submit");
+  submitBtn.textContent =
+    workflow === "l3" ? "Закрыть обращение"
+    : workflow === "l2" ? "Изменить ответственного"
+    : "Зарегистрировать";
+
+  // Рендер формы
+  const registry = FormRenderer.render(dynamicForm, schema, {
+    ticket: t,
+    submitBtn: submitBtn,
+    hintEl: hintEl,
+    onFieldChange: (fieldId, value) => handleFieldChange(fieldId, value, t, workflow, registry),
+    onValidate: () => validateCurrentForm()
+  });
+  state.currentForm = registry;
+
+  // Заполнение опций селектов
+  populateSelects(registry, t, workflow);
+
+  // Предзаполнение значений: L1/L2 — title/desc; L2 — каскад.
+  if (workflow === "l1" || workflow === "l2") {
+    if (registry.fields.title) registry.fields.title.value = t.title;
+    if (registry.fields.desc) registry.fields.desc.value = t.text;
+  }
+  if (workflow === "l2") {
+    prefillL2(registry, t);
+    updateAutoCalc(registry);
+  }
+
+  // Версии (L1/L2)
+  if (workflow !== "l3") {
+    if (workflow === "l2") {
+      const org = getOrg(t.orgId);
+      state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
+    } else {
+      state.orgVersions = [];
+    }
+    renderVerList();
+  }
+
+  // Обновление видимости после предзаполнения (composite/showIf)
+  FormRenderer.updateVisibility(dynamicForm);
+
+  showScreen("screen-work");
+  validateCurrentForm();
+}
+
+// ============ Render: входящее ============
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+}
+
+function renderIncoming(t, workflow) {
+  const body = q('[data-slot="incoming-body"]');
+  body.innerHTML = "";
+
   const org = getOrg(t.orgId);
   const c = CONTACTS.find(x => x.id === t.contactId);
+  const m = calcPriority(t.imp, t.urg);
 
-  document.getElementById("work-title").textContent = isL2 ? "Распределение задач (Тимлид)" : "Рабочее место";
-  document.getElementById("work-num").textContent = t.id;
-  document.getElementById("frm-org").textContent = org ? org.name : "";
-  document.getElementById("frm-cont").textContent = c ? (c.name + ", " + c.title) : "";
-  document.getElementById("frm-chan").textContent = t.channel;
-  document.getElementById("frm-title").textContent = t.title;
-  document.getElementById("frm-text").textContent = t.text;
+  const kv = document.createElement("div");
+  kv.className = "kv";
+  kv.innerHTML = `
+    <div class="kv-row"><span class="kv-key">Организация</span><span class="kv-val">${org ? org.name : ""}</span></div>
+    <div class="kv-row"><span class="kv-key">Контакт</span><span class="kv-val">${c ? c.name + ", " + c.title : ""}</span></div>
+    <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val">${t.channel}</span></div>
+    ${workflow === "l3" ? `<div class="kv-row"><span class="kv-key">Тип / Приоритет</span><span class="kv-val">${t.type} • ${m ? m.prio : "-"}</span></div>` : ""}
+    <div class="kv-row"><span class="kv-key">Заголовок</span><span class="kv-val">${t.title}</span></div>
+  `;
+  body.appendChild(kv);
 
-  document.getElementById("clarify-block").style.display = "none";
-  document.getElementById("btn-clarify").style.display = t.clarification ? "block" : "none";
+  const textBlock = document.createElement("div");
+  textBlock.className = "text-block";
+  textBlock.innerHTML = `<div class="text-block-title">Текст обращения</div>
+                         <div class="text-block-content">${escapeHtml(t.text)}</div>`;
+  body.appendChild(textBlock);
 
-  document.getElementById("card-org").value = org ? org.id : "";
-  onCardOrg(); // Это заполнит контакты и продукты
+  // Дубликат (L3)
+  if (workflow === "l3" && t.duplicateOf) {
+    const dupBlock = document.createElement("div");
+    dupBlock.dataset.slot = "dup-block";
+    dupBlock.style.cssText = "background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; font-size:13px;";
+    dupBlock.innerHTML = `<b>Обратите внимание:</b> похоже, это повтор уже разобранных симптомов. Проверьте, не было ли подобного ранее, и есть ли Known Error с обходным решением.`;
+    body.appendChild(dupBlock);
 
-  document.getElementById("card-cont").value = c ? c.id : "";
-  document.getElementById("card-chan").value = t.channel;
-  document.getElementById("card-title").value = t.title;
-  document.getElementById("card-desc").value = t.text;
+    const prev = DataStore.getTicket(state.level, t.duplicateOf);
+    const dupLink = document.createElement("div");
+    dupLink.dataset.slot = "dup-link";
+    dupLink.style.cssText = "margin-top:8px; font-size:13px;";
+    dupLink.innerHTML = `<span class="kv-key">Связано с:</span>
+                         <select data-slot="dup-select"><option value="${t.duplicateOf}">${prev ? prev.id + " • " + prev.title : t.duplicateOf}</option></select>`;
+    body.appendChild(dupLink);
 
-  if (isL2) {
-    document.getElementById("card-type").value = t.type; onCardType();
-    document.getElementById("card-prod").value = t.prod; onCardProd();
-    document.getElementById("card-cat").value = t.cat; onCardCat();
-    document.getElementById("card-sub").value = t.sub;
-    document.getElementById("card-imp").value = t.imp;
-    document.getElementById("card-urg").value = t.urg; onCardPri();
-
-    document.querySelectorAll("#screen-work .form-grid select, #screen-work .form-grid input, #screen-work .form-grid textarea, #btn-add-prod, #sel-add-prod").forEach(el => el.disabled = false);
-    document.querySelectorAll("#ver-list select, #ver-list button").forEach(el => el.disabled = false);
-
-    document.getElementById("auto-box").style.display = "block";
-    document.getElementById("prio-hint").style.display = "none";
-    document.getElementById("btn-reg").style.display = "none";
-    document.getElementById("btn-assign-l2").style.display = "inline-block";
-    document.getElementById("btn-assign-l2").disabled = true;
-    document.getElementById("ro-resp").textContent = "Тимлид команды Бета";
-
-    document.getElementById("card-assignee").value = "";
-    document.getElementById("card-comment").value = "";
-  } else {
-    document.getElementById("card-type").value = ""; onCardType();
-    document.getElementById("card-prod").value = "";
-    fillSelect(document.getElementById("card-cat"), []);
-    fillSelect(document.getElementById("card-sub"), []);
-    document.getElementById("card-imp").value = "";
-    document.getElementById("card-urg").value = "";
-
-    document.querySelectorAll("#screen-work .form-grid select, #screen-work .form-grid input, #screen-work .form-grid textarea, #btn-add-prod, #sel-add-prod").forEach(el => el.disabled = false);
-    document.querySelectorAll("#ver-list select, #ver-list button").forEach(el => el.disabled = false);
-
-    document.getElementById("auto-box").style.display = "block";
-    document.getElementById("btn-reg").style.display = "inline-block";
-    document.getElementById("btn-assign-l2").style.display = "none";
-    document.getElementById("ro-resp").textContent = "текущий регистратор";
-
-    document.getElementById("auto-prio").textContent = "-";
-    document.getElementById("auto-react").textContent = "-";
-    document.getElementById("auto-sol").textContent = "-";
+    const dupHint = document.createElement("div");
+    dupHint.dataset.slot = "dup-hint";
+    dupHint.style.cssText = "margin-top:8px; font-size:12px; color:var(--warn);";
+    dupHint.textContent = "⚠ Обращение похоже на повтор. Укажите, с каким обращением оно связано, и примените обходное решение из Known Error.";
+    body.appendChild(dupHint);
   }
 
-  document.getElementById("ro-num").textContent = t.id;
-  showScreen("screen-work");
+  // Кнопка уточнения
+  const hasClarify = workflow === "l3"
+    ? (Array.isArray(t.clarifications) && t.clarifications.length > 0)
+    : !!t.clarification;
 
-  // Принудительно запускаем валидацию после заполнения полей
-  FormRenderer.validate("dynamic-form-container", schema, isL2 ? "btn-assign-l2" : "btn-reg", null, () => state.orgVersions && state.orgVersions.length > 0);
+  if (hasClarify) {
+    const clarifyBtn = document.createElement("button");
+    clarifyBtn.dataset.action = workflow === "l3" ? "clarify-l3" : "clarify";
+    clarifyBtn.className = "btn primary";
+    clarifyBtn.style.cssText = "width:100%; border:1px dashed #93c5fd; background:#eff6ff; color:#1e40af; margin-top:10px;";
+    clarifyBtn.textContent = workflow === "l3"
+      ? "Запросить уточняющую информацию у заказчика"
+      : "Написать заказчику и уточнить детали";
+    body.appendChild(clarifyBtn);
+
+    const clarifyBlock = document.createElement("div");
+    clarifyBlock.dataset.slot = "clarify-block";
+    clarifyBlock.style.cssText = "display:none; margin-top:10px;";
+    clarifyBlock.innerHTML = `
+      <div class="text-block" style="border-color:#c7d2fe; background-color:#eef2ff;">
+        <div class="text-block-title" style="background-color:#c7d2fe; color:#3730a3; font-weight:600;">Ответ заказчика</div>
+        <div class="text-block-content" data-slot="clarify-text" style="color:#1e3a8a; font-style:italic;"></div>
+      </div>`;
+    body.appendChild(clarifyBlock);
+  }
 }
 
-function onCardOrg() {
-  const oid = document.getElementById("card-org").value;
-  const org = getOrg(oid);
-  const conts = getContactsByOrg(oid);
-  fillSelect(document.getElementById("card-cont"), conts.map(c => ({value:c.id, label:c.name})));
-  updateProductSelect(org);
-  fillSelect(document.getElementById("card-cat"), []);
-  fillSelect(document.getElementById("card-sub"), []);
-  state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx, name: p.name, ver: p.ver }));
-  renderVerList();
+// ============ Render: диагностика ============
+
+function renderDiagnostics(t) {
+  const body = q('[data-slot="extra-body"]');
+  body.innerHTML = "";
+
+  const tabs = document.createElement("div");
+  tabs.id = "diag-tabs";
+  tabs.className = "l3-diag-tabs";
+  body.appendChild(tabs);
+
+  const block = document.createElement("div");
+  block.className = "text-block";
+  block.innerHTML = `
+    <div class="text-block-title" data-slot="diag-title">Выберите инструмент диагностики</div>
+    <div class="text-block-content" data-slot="diag-content"
+         style="font-family:Consolas,Menlo,monospace; font-size:12.5px; white-space:pre-wrap; line-height:1.55;"></div>`;
+  body.appendChild(block);
+
+  const hint = document.createElement("div");
+  hint.className = "prio-hint";
+  hint.style.fontSize = "12.5px";
+  hint.innerHTML = `<b>Подсказка:</b> лог говорит <i>что</i> сломалось, конфигурация — <i>что изменилось</i>, лицензия — <i>куплено ли вообще</i>.`;
+  body.appendChild(hint);
+
+  (t.diagnostics || []).forEach((d, i) => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.style.marginRight = "6px";
+    b.dataset.action = "diag-tab";
+    b.dataset.tabId = d.id;
+    b.textContent = d.label;
+    tabs.appendChild(b);
+    if (i === 0) setTimeout(() => switchDiagTab(d.id), 0);
+  });
 }
+
+function switchDiagTab(tabId) {
+  const t = getTicket(state.currentId);
+  if (!t || !t.diagnostics) return;
+  const d = t.diagnostics.find(x => x.id === tabId);
+  if (!d) return;
+  const title = q('[data-slot="diag-title"]');
+  const content = q('[data-slot="diag-content"]');
+  if (title) title.textContent = d.label;
+  if (content) content.textContent = d.content;
+  document.querySelectorAll('#diag-tabs .btn').forEach(b => {
+    const active = b.dataset.tabId === tabId;
+    b.style.background = active ? "var(--primary)" : "";
+    b.style.color = active ? "#fff" : "";
+    b.style.borderColor = active ? "transparent" : "";
+  });
+}
+
+// ============ Build helpers ============
+
+function buildReadonlyBlock(t, workflow) {
+  const grid = document.createElement("div");
+  grid.className = "ro-grid";
+  grid.style.marginBottom = "12px";
+  const m = calcPriority(t.imp, t.urg);
+
+  if (workflow === "l3") {
+    grid.innerHTML = `
+      <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val">${t.id}</span></div>
+      <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val">${t.ver}</span></div>
+      <div class="ro-row"><span class="ro-key">Срочность / Важность</span><span class="ro-val">${t.imp} / ${t.urg}</span></div>
+      <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val">${m ? m.react + " / " + m.sol : "-"}</span></div>`;
+  } else {
+    grid.innerHTML = `
+      <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${t.id}</span></div>
+      <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">${workflow === "l2" ? "Тимлид команды Бета" : "текущий регистратор"}</span></div>
+      <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
+      <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
+  }
+  return grid;
+}
+
+function buildVersionsWidget() {
+  const wrap = document.createElement("div");
+  wrap.style.marginTop = "12px";
+  wrap.innerHTML = `
+    <label class="form-field full">
+      <span class="form-label">Продукты и версии</span>
+      <div data-slot="ver-list" class="ver-list"></div>
+      <div class="ver-add-wrap">
+        <div class="ver-add-title">Добавить продукт</div>
+        <div class="ver-add-row">
+          <select data-slot="add-prod-select"></select>
+          <button type="button" data-action="add-prod" class="btn">Добавить продукт</button>
+        </div>
+      </div>
+    </label>`;
+  return wrap;
+}
+
+function buildPriorityHint() {
+  const hint = document.createElement("div");
+  hint.className = "prio-hint";
+  hint.dataset.slot = "prio-hint";
+  hint.style.display = "none";
+  hint.innerHTML = `<b>Внимание:</b> Для «Запрос на обслуживание» и «Консультация» по умолчанию устанавливается средний приоритет. Измените вручную, если заказчик указал срочность.`;
+  return hint;
+}
+
+function buildAutoCalcBlock() {
+  const auto = document.createElement("div");
+  auto.className = "auto-box";
+  auto.innerHTML = `
+    <div class="auto-title">Автоматический расчёт</div>
+    <div class="auto-grid">
+      <div class="auto-item"><div class="auto-l">Приоритет</div><div class="auto-v" data-auto="prio">-</div></div>
+      <div class="auto-item"><div class="auto-l">Срок реакции</div><div class="auto-v" data-auto="react">-</div></div>
+      <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" data-auto="sol">-</div></div>
+    </div>`;
+  return auto;
+}
+
+// ============ Populate / Prefill ============
+
+function populateSelects(registry, t, workflow) {
+  const f = registry.fields;
+
+  if (f.org) fillSelect(f.org, DataStore.getOrgs().map(o => ({ value: o.id, label: o.name })));
+
+  if (f.cont) {
+    const oid = workflow === "l2" ? t.orgId : "";
+    fillSelect(f.cont, oid ? getContactsByOrg(oid).map(c => ({ value: c.id, label: c.name })) : []);
+  }
+
+  if (f.prod) {
+    const org = workflow === "l2" ? getOrg(t.orgId) : null;
+    fillSelect(f.prod, org ? org.products.map(p => ({ value: p.name, label: p.name })) : []);
+  }
+
+  if (f.cat) fillSelect(f.cat, []);
+  if (f.sub) fillSelect(f.sub, []);
+
+  if (f.assignee) fillSelect(f.assignee, DataStore.getEmployees().map(e => ({
+    value: e.id,
+    label: `${e.name} (${e.role}) • В работе: ${e.workload !== undefined ? e.workload : 0} - ${e.status}`
+  })));
+
+  if (f.comment) fillSelect(f.comment, DataStore.getCommentsL2().map(c => ({ value: c.id, label: c.text })));
+  if (f.workaround) fillSelect(f.workaround, (t.workarounds || []).map((w, i) => ({ value: String(i), label: w })));
+  if (f.radical) fillSelect(f.radical, (t.radical || []).map((w, i) => ({ value: String(i), label: w })));
+  if (f.owner) fillSelect(f.owner, DataStore.getEmployeesL3().map(e => ({ value: e.id, label: e.name + " (" + e.role + ")" })));
+  if (f.method) fillSelect(f.method, DataStore.getProblemMethods().map(m => ({ value: m, label: m })));
+  if (f.linkedProb) fillSelect(f.linkedProb, [{ value: "", label: "Выберите проблему..." }]);
+}
+
+function prefillL2(registry, t) {
+  const f = registry.fields;
+
+  if (f.org) f.org.value = t.orgId;
+
+  // cascade: contacts
+  if (f.cont) {
+    fillSelect(f.cont, getContactsByOrg(t.orgId).map(c => ({ value: c.id, label: c.name })));
+    f.cont.value = t.contactId;
+  }
+
+  // cascade: products
+  const org = getOrg(t.orgId);
+  if (f.prod) {
+    fillSelect(f.prod, org ? org.products.map(p => ({ value: p.name, label: p.name })) : []);
+    f.prod.value = t.prod;
+  }
+
+  // cascade: cat
+  if (f.cat) {
+    fillSelect(f.cat, getCatList(t.prod).map(c => ({ value: c.name, label: c.name })));
+    f.cat.value = t.cat;
+  }
+
+  // cascade: sub
+  if (f.sub) {
+    fillSelect(f.sub, getSubList(t.prod, t.cat).map(s => ({ value: s, label: s })));
+    f.sub.value = t.sub;
+  }
+
+  if (f.chan) f.chan.value = t.channel;
+  if (f.type) f.type.value = t.type;
+  if (f.imp) f.imp.value = t.imp;
+  if (f.urg) f.urg.value = t.urg;
+
+  // Ответственные/комментарий — НЕ предзаполняем: это и есть задание.
+  if (f.assignee) f.assignee.value = "";
+  if (f.comment) f.comment.value = "";
+}
+
+// ============ Field change ============
+
+function handleFieldChange(fieldId, value, t, workflow, registry) {
+  const f = registry.fields;
+
+  if (fieldId === "org" && f.cont && f.prod) {
+    const contacts = getContactsByOrg(value);
+    fillSelect(f.cont, contacts.map(c => ({ value: c.id, label: c.name })));
+    const org = getOrg(value);
+    fillSelect(f.prod, org ? org.products.map(p => ({ value: p.name, label: p.name })) : []);
+    if (f.cat) fillSelect(f.cat, []);
+    if (f.sub) fillSelect(f.sub, []);
+    state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
+    renderVerList();
+  }
+
+  if (fieldId === "prod" && f.cat) {
+    fillSelect(f.cat, getCatList(value).map(c => ({ value: c.name, label: c.name })));
+    if (f.sub) fillSelect(f.sub, []);
+  }
+
+  if (fieldId === "cat" && f.sub && f.prod) {
+    fillSelect(f.sub, getSubList(f.prod.value, value).map(s => ({ value: s, label: s })));
+  }
+
+  if (fieldId === "type" && workflow === "l1" && f.imp && f.urg) {
+    const hint = q('[data-slot="prio-hint"]');
+    if (value === "Запрос на обслуживание" || value === "Консультация") {
+      if (hint) hint.style.display = "block";
+      f.imp.value = "средняя";
+      f.urg.value = "средняя";
+    } else if (hint) {
+      hint.style.display = "none";
+    }
+    updateAutoCalc(registry);
+  }
+
+  if (fieldId === "imp" || fieldId === "urg") {
+    updateAutoCalc(registry);
+  }
+
+  if (fieldId === "outcome") {
+    updateLinkedProbOptions(registry, value);
+    // showIf composite/select пересчёт
+    FormRenderer.updateVisibility(q('[data-slot="form-body"]'));
+  }
+}
+
+function updateAutoCalc(registry) {
+  if (!registry.fields.imp || !registry.fields.urg) return;
+  const m = calcPriority(registry.fields.imp.value, registry.fields.urg.value);
+  const prio = q('[data-auto="prio"]');
+  const react = q('[data-auto="react"]');
+  const sol = q('[data-auto="sol"]');
+  if (prio) prio.textContent = m ? m.prio : "-";
+  if (react) react.textContent = m ? m.react : "-";
+  if (sol) sol.textContent = m ? m.sol : "-";
+}
+
+function updateLinkedProbOptions(registry, outcome) {
+  const sel = registry.fields.linkedProb;
+  if (!sel) return;
+  let opts = [{ value: "", label: "Выберите проблему..." }];
+  for (const p of PROBLEMS) {
+    if (outcome === "known_error" && p.status !== "known_error") continue;
+    if (outcome === "fixed_problem" && p.status !== "resolved") continue;
+    if (outcome !== "known_error" && outcome !== "fixed_problem") continue;
+    const stat = p.status === "resolved" ? "🟢 ИСПРАВЛЕНА" : "🔴 В РАБОТЕ";
+    opts.push({ value: p.id, label: `${p.id} [${stat}] • ${p.title}` });
+  }
+  fillSelect(sel, opts);
+}
+
+function validateCurrentForm() {
+  if (!state.currentForm) return;
+  const schema = DataStore.getSchema(state.level);
+  const wf = DataStore.getLevelWorkflow(state.level);
+  FormRenderer.validate(state.currentForm, schema, () => {
+    if (wf === "l3") return true;
+    return state.orgVersions && state.orgVersions.length > 0;
+  });
+}
+
+// ============ Clarify ============
+
+function requestClarification() {
+  const t = getTicket(state.currentId);
+  if (!t || !t.clarification) return;
+  const text = q('[data-slot="clarify-text"]');
+  const block = q('[data-slot="clarify-block"]');
+  if (text) text.textContent = t.clarification;
+  if (block) block.style.display = "block";
+  const btn = q('[data-action="clarify"]');
+  if (btn) btn.style.display = "none";
+}
+
+function l3RequestClarify() {
+  const t = getTicket(state.currentId);
+  if (!t || !t.clarifications || t.clarifications.length === 0) return;
+  state.l3.requestedClarify = true;
+  state.l3.clarified = true;
+  const text = q('[data-slot="clarify-text"]');
+  const block = q('[data-slot="clarify-block"]');
+  if (text) text.textContent = t.clarifications[0].answer;
+  if (block) block.style.display = "block";
+  const btn = q('[data-action="clarify-l3"]');
+  if (btn) btn.style.display = "none";
+}
+
+// ============ Versions widget ============
 
 function renderVerList() {
-  const list = document.getElementById("ver-list");
+  const list = q('[data-slot="ver-list"]');
+  if (!list) return;
   list.innerHTML = "";
   if (!state.orgVersions || state.orgVersions.length === 0) {
     list.innerHTML = "<div style='color:var(--sub);font-size:13px'>Нет данных</div>";
-    renderAddProdSelect(); return;
+    renderAddProdSelect();
+    return;
   }
   for (const v of state.orgVersions) {
     const row = document.createElement("div");
@@ -314,209 +693,85 @@ function renderVerList() {
       const idv = parseInt(btn.getAttribute("data-del-id"));
       state.orgVersions = state.orgVersions.filter(x => x.id !== idv);
       renderVerList();
+      validateCurrentForm();
     });
   });
   renderAddProdSelect();
 }
 
 function renderAddProdSelect() {
-  const sel = document.getElementById("sel-add-prod");
+  const sel = q('[data-slot="add-prod-select"]');
   if (!sel) return;
   const added = new Set((state.orgVersions || []).map(v => v.name));
-  const org = getOrg(document.getElementById("card-org").value);
-  const full = getOrgVersions(org).map((p, idx) => ({ id: idx, name: p.name, ver: p.ver }));
+  const orgField = state.currentForm && state.currentForm.fields.org;
+  const org = getOrg(orgField ? orgField.value : "");
+  const full = getOrgVersions(org);
   sel.innerHTML = "";
   const def = document.createElement("option");
   def.value = ""; def.textContent = "Выберите продукт из справочника"; sel.appendChild(def);
-  for (const p of full) { if (!added.has(p.name)) { const opt = document.createElement("option"); opt.value = p.name; opt.textContent = p.name + " " + p.ver; sel.appendChild(opt); } }
-  const btn = document.getElementById("btn-add-prod");
+  for (const p of full) {
+    if (!added.has(p.name)) {
+      const opt = document.createElement("option");
+      opt.value = p.name; opt.textContent = p.name + " " + p.ver; sel.appendChild(opt);
+    }
+  }
+  const btn = q('[data-action="add-prod"]');
   if (btn) btn.disabled = (sel.options.length <= 1);
 }
 
 function addProductToCard() {
-  const sel = document.getElementById("sel-add-prod");
+  const sel = q('[data-slot="add-prod-select"]');
+  if (!sel) return;
   const name = sel.value; if (!name) return;
-  const org = getOrg(document.getElementById("card-org").value);
-  const full = getOrgVersions(org).map((p, idx) => ({ id: idx, name: p.name, ver: p.ver }));
-  const p = full.find(x => (x.name + " " + x.ver) === name || x.name === name);
+  const orgField = state.currentForm && state.currentForm.fields.org;
+  const org = getOrg(orgField ? orgField.value : "");
+  const full = getOrgVersions(org);
+  const p = full.find(x => x.name === name);
   if (!p || state.orgVersions.some(v => v.name === p.name)) return;
   state.orgVersions.push({ id: Date.now(), name: p.name, ver: p.ver });
   renderVerList();
+  validateCurrentForm();
 }
 
-function onCardProd() {
-  const p = document.getElementById("card-prod").value;
-  fillSelect(document.getElementById("card-cat"), []);
-  fillSelect(document.getElementById("card-sub"), []);
-  if (p && TAX[p]) { for (const c of TAX[p]) { const opt = document.createElement("option"); opt.value = c.name; opt.textContent = c.name; document.getElementById("card-cat").appendChild(opt); } }
-}
+// ============ Submits ============
 
-function onCardCat() {
-  const p = document.getElementById("card-prod").value;
-  const cname = document.getElementById("card-cat").value;
-  fillSelect(document.getElementById("card-sub"), []);
-  const subs = getSubList(p, cname);
-  for (const s of subs) { const opt = document.createElement("option"); opt.value = s; opt.textContent = s; document.getElementById("card-sub").appendChild(opt); }
-}
-
-function onCardType() {
-  const type = document.getElementById("card-type").value;
-  const hint = document.getElementById("prio-hint");
-  const imp = document.getElementById("card-imp");
-  const urg = document.getElementById("card-urg");
-
-  if (DataStore.getLevelWorkflow(state.level) === "l1") {
-    imp.value = ""; urg.value = "";
-    if (type === "Запрос на обслуживание" || type === "Консультация") {
-      hint.style.display = "block"; imp.value = "средняя"; urg.value = "средняя";
-    } else {
-      hint.style.display = "none";
-    }
-  }
-  onCardPri();
-}
-
-function onCardPri() {
-  const imp = document.getElementById("card-imp").value;
-  const urg = document.getElementById("card-urg").value;
-  const m = calcPriority(imp, urg);
-  if (m) { document.getElementById("auto-prio").textContent = m.prio; document.getElementById("auto-react").textContent = m.react; document.getElementById("auto-sol").textContent = m.sol; }
-  else { document.getElementById("auto-prio").textContent = "-"; document.getElementById("auto-react").textContent = "-"; document.getElementById("auto-sol").textContent = "-"; }
+function showSuccess(ticketId, modalId) {
+  const idEl = document.getElementById(modalId === "modal-assign" ? "assign-ok-id" : "reg-ok-id");
+  if (idEl) idEl.textContent = ticketId;
+  showModal(modalId);
 }
 
 function register() {
   const t = DataStore.getTicket(1, state.currentId);
-  if (!t) return;
-  const formData = {
-    org: document.getElementById("card-org").value,
-    cont: document.getElementById("card-cont").value,
-    chan: document.getElementById("card-chan").value,
-    type: document.getElementById("card-type").value,
-    prod: document.getElementById("card-prod").value,
-    cat: document.getElementById("card-cat").value,
-    sub: document.getElementById("card-sub").value,
-    vers: state.orgVersions.map(v => v.name + " " + v.ver),
-    imp: document.getElementById("card-imp").value,
-    urg: document.getElementById("card-urg").value
-  };
+  if (!t || !state.currentForm) return;
   const schema = DataStore.getSchema(1);
+  const formData = FormRenderer.getFormData(state.currentForm, schema);
+  formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
   state.getResults(1)[t.id] = Validator.validate(schema, t, formData);
   ProgressStore.save(1, makeSnapshot());
-  document.getElementById("reg-ok-id").textContent = t.id;
-  showModal("modal-reg");
+  showSuccess(t.id, "modal-reg");
 }
 
 function assignL2() {
   const t = DataStore.getTicket(2, state.currentId);
-  if (!t) return;
-  const formData = {
-    org: document.getElementById("card-org").value,
-    cont: document.getElementById("card-cont").value,
-    chan: document.getElementById("card-chan").value,
-    type: document.getElementById("card-type").value,
-    prod: document.getElementById("card-prod").value,
-    cat: document.getElementById("card-cat").value,
-    sub: document.getElementById("card-sub").value,
-    vers: state.orgVersions.map(v => v.name + " " + v.ver),
-    imp: document.getElementById("card-imp").value,
-    urg: document.getElementById("card-urg").value,
-    assignee: document.getElementById("card-assignee").value,
-    comment: document.getElementById("card-comment").value
-  };
+  if (!t || !state.currentForm) return;
   const schema = DataStore.getSchema(2);
+  const formData = FormRenderer.getFormData(state.currentForm, schema);
+  formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
   state.getResults(2)[t.id] = Validator.validate(schema, t, formData);
   ProgressStore.save(2, makeSnapshot());
-  document.getElementById("assign-ok-id").textContent = t.id;
-  showModal("modal-assign");
-  const assignedEmp = DataStore.getEmployees().find(e => e.id === formData.assignee);
-  if (assignedEmp && assignedEmp.workload !== undefined) assignedEmp.workload += 1;
-}
-
-// ===== УРОВЕНЬ 3/4: Инженер / Problem Manager =====
-
-function l3RequestClarify() {
-  const t = getTicket(state.currentId);
-  if (!t || !t.clarifications || t.clarifications.length === 0) return;
-  state.l3.requestedClarify = true;
-  state.l3.clarified = true;
-  const schema = DataStore.getSchema(state.level);
-  const action = (schema.actions || []).find(a => a.id === "clarify");
-  if (action) FormRenderer.applyAction(action, { ticket: t });
-}
-
-function l3GoBack() {
-  state.currentId = null;
-  state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
-  document.getElementById("l3-dup-of").innerHTML = "";
-  document.getElementById("l3-dup-block").style.display = "none";
-  document.getElementById("l3-dup-link").style.display = "none";
-  document.getElementById("l3-dup-hint").style.display = "none";
-  document.getElementById("l3-clarify-block").style.display = "none";
-  document.getElementById("l3-clarify-text").textContent = "";
-  renderQueue();
-  const lvl = DataStore.getLevel(state.level);
-  if (lvl && lvl.queueScreen) showScreen(lvl.queueScreen);
-}
-
-function openL3Work(id) {
-  const t = getTicket(id);
-  if (!t) return;
-  state.currentId = id;
-  state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
-
-  const org = getOrg(t.orgId);
-  const c = CONTACTS.find(x => x.id === t.contactId);
-  document.getElementById("work-num-l3").textContent = t.id;
-  document.getElementById("l3-frm-org").textContent = org ? org.name : "";
-  document.getElementById("l3-frm-cont").textContent = c ? (c.name + ", " + c.title) : "";
-  document.getElementById("l3-frm-chan").textContent = t.channel;
-  const m = calcPriority(t.imp, t.urg);
-  document.getElementById("l3-frm-prio").textContent = t.type + " • " + (m ? m.prio : "-");
-  document.getElementById("l3-frm-title").textContent = t.title;
-  document.getElementById("l3-frm-text").textContent = t.text;
-  document.getElementById("l3-clarify-block").style.display = "none";
-  document.getElementById("l3-clarify-text").textContent = "";
-
-  const dupSel = document.getElementById("l3-dup-of");
-  dupSel.innerHTML = "";
-  if (t.duplicateOf) {
-    const prev = DataStore.getTicket(state.level, t.duplicateOf);
-    const opt = document.createElement("option");
-    opt.value = t.duplicateOf;
-    opt.textContent = prev ? (prev.id + " • " + prev.title) : t.duplicateOf;
-    dupSel.appendChild(opt);
-  }
-
-  // --- ДИНАМИЧЕСКИЙ РЕНДЕРИНГ ФОРМЫ ---
-  const schema = DataStore.getSchema(state.level);
-  FormRenderer.render("l3-dynamic-form", schema, {
-    ticket: t,
-    btnId: "btn-l3-submit",
-    hintId: "l3-submit-hint"
-  });
-  FormRenderer.renderTabs('l3-diag-tabs', schema, { ticket: t });
-  FormRenderer.bindActions(schema, { ticket: t });
-
-  // --- ОБНОВЛЕНИЕ RO-БЛОКА ---
-  document.getElementById("l3-ro-num").textContent = t.id;
-  document.getElementById("l3-ro-prod").textContent = t.ver;
-  document.getElementById("l3-ro-imp").textContent = t.imp + " / " + t.urg;
-  document.getElementById("l3-ro-sla").textContent = m ? (m.react + " / " + m.sol) : "-";
-
-  showScreen("screen-work-l3");
-
-  // Принудительный запуск валидации после рендера
-  FormRenderer.validate("l3-dynamic-form", schema, "btn-l3-submit", "l3-submit-hint");
+  showSuccess(t.id, "modal-assign");
+  const emp = DataStore.getEmployees().find(e => e.id === formData.assignee);
+  if (emp && emp.workload !== undefined) emp.workload += 1;
 }
 
 function l3Submit() {
   const t = getTicket(state.currentId);
-  if (!t) return;
-
+  if (!t || !state.currentForm) return;
   const schema = DataStore.getSchema(state.level);
-  const formData = FormRenderer.getFormData("l3-dynamic-form", schema);
-
-  formData.dupVal = document.getElementById("l3-dup-of").value;
+  const formData = FormRenderer.getFormData(state.currentForm, schema);
+  const dupSel = q('[data-slot="dup-select"]');
+  formData.dupVal = dupSel ? dupSel.value : "";
 
   const result = Validator.validate(schema, t, formData);
   state.getResults(state.level)[t.id] = result;
@@ -526,64 +781,11 @@ function l3Submit() {
       state.createdProblems.push(t.problem?.record);
     }
   }
-
-  document.getElementById("reg-ok-id").textContent = t.id;
-  showModal("modal-reg");
+  showSuccess(t.id, "modal-reg");
   ProgressStore.save(state.level, makeSnapshot());
 }
 
-function openProblems() {
-  const body = document.getElementById("problems-body");
-  body.innerHTML = "";
-  const resolvedIds = Object.keys(state.getResults(3)).filter(id => state.getResults(3)[id].registered);
-
-  if (resolvedIds.length === 0) {
-    body.innerHTML = "<div style='color: var(--sub); font-size: 14px;'>Пока нет зарегистрированных Problem Records. Они появляются, когда вы закрываете обращение с исходом «Known Error».</div>";
-  }
-
-  let displayProblems = [...PROBLEMS];
-
-  if (state.createdProblems && state.createdProblems.includes("PRB-3")) {
-    displayProblems.push({
-      id: "PRB-3",
-      status: "known_error",
-      incidents: ["TK-310"],
-      incidentsLinked: ["TK-310"],
-      title: "В Про.Документы 4.9 отсутствует фильтрация уведомлений по ролям",
-      rootCause: "Функциональный пробел версии 4.9: профиль уведомлений поддерживает только событие ALL, фильтрация по ролям и событиям появилась в 5.0. Пользователи 4.9 вынуждены получать все уведомления или отключать их полностью",
-      impact: "среднее",
-      prob: "высокая",
-      owner: "E6",
-      method: "5 почему",
-      rfc: "Бэкпортировать механизм фильтрации уведомлений по ролям/событиям из 5.0 в 4.9 либо согласовать план обновления клиентов 4.9 до 5.x. До внедрения - ручная настройка событий «на согласовании мне» и «отклонено».",
-      archiveList: [
-        { id: "TK-310", title: "Массовая рассылка уведомлений парализует работу отдела", org: "АО «Северная Мебель»" }
-      ]
-    });
-  }
-
-  for (const p of displayProblems) {
-    const archiveList = p.archiveList || ARCHIVE_INCIDENTS[p.id] || [];
-    const linked = archiveList.map(inc => {
-      return `<li style="margin-bottom: 4px;">${inc.id} • ${inc.title} <span class="tag ok" style="font-size: 11px;">закрыто</span> <span style="color: var(--sub); font-size: 11px;">(${inc.org})</span></li>`;
-    }).join("");
-    const card = document.createElement("div");
-    card.style.cssText = "border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #f8fafc;";
-    const statusBadge = p.status === "resolved"
-      ? '<span class="tag ok" style="margin-left: 8px;">Исправлена</span>'
-      : '<span class="tag bad" style="margin-left: 8px;">В работе (известная ошибка)</span>';
-
-    card.innerHTML = `
-      <div style="font-weight: 600; margin-bottom: 6px;">${p.id} • ${p.title} ${statusBadge}</div>
-      <div style="font-size: 13px; color: var(--sub); margin-bottom: 8px;">Первопричина: ${p.rootCause}</div>
-      <div style="font-size: 13px;"><b>Связанные инциденты:</b><ul style="margin: 6px 0 8px 18px; padding: 0;">${linked}</ul></div>
-      <div style="font-size: 13px;"><b>Владелец:</b> ${DataStore.getEmployeesL3().find(e => e.id === p.owner)?.name || p.owner} • <b>Метод:</b> ${p.method} • <b>Влияние:</b> ${p.impact} • <b>Вероятность:</b> ${p.prob}</div>
-      <div style="font-size: 13px; margin-top: 8px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px;"><b>RFC:</b> ${p.rfc}</div>
-    `;
-    body.appendChild(card);
-  }
-  showModal("modal-problems");
-}
+// ============ Результаты ============
 
 function showResults(level) {
   const tbody = document.querySelector("#res-table tbody");
@@ -594,31 +796,70 @@ function showResults(level) {
   document.getElementById("res-title").textContent = `Итоги работы (Уровень ${level})`;
 
   for (const t of tickets) {
-    const r = results[t.id] || {registered:false, errs:[], comparison:[], ok:false};
+    const r = results[t.id] || { registered: false, errs: [], comparison: [], ok: false };
     const tr = document.createElement("tr");
 
     let formHtml = "";
     if (workflow === "l1") {
-      const orgObj = getOrg(t.orgId); const contactObj = CONTACTS.find(c => c.id === t.contactId);
-      formHtml = `<div style="font-size: 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px;"><div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${t.id} • ${t.title}</div><div class="kv" style="gap: 4px; margin-bottom: 8px;"><div class="kv-row" style="grid-template-columns: 90px 1fr; gap: 8px; font-size: 12px;"><span class="kv-key">Орг.</span><span class="kv-val">${orgObj ? orgObj.name : ""}</span></div><div class="kv-row" style="grid-template-columns: 90px 1fr; gap: 8px; font-size: 12px;"><span class="kv-key">Контакт</span><span class="kv-val">${contactObj ? contactObj.name : ""}</span></div></div><div class="text-block" style="margin-top: 0; margin-bottom: 8px;"><div class="text-block-title" style="font-size: 12px; padding: 6px 10px;">Текст</div><div class="text-block-content" style="font-size: 12px; padding: 10px; white-space: pre-wrap;">${t.text}</div></div></div>`;
+      const orgObj = getOrg(t.orgId);
+      const contactObj = CONTACTS.find(c => c.id === t.contactId);
+      formHtml = `<div style="font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;">
+        <div style="font-weight:600;margin-bottom:8px;font-size:14px;">${t.id} • ${t.title}</div>
+        <div class="kv" style="gap:4px;margin-bottom:8px;">
+          <div class="kv-row" style="grid-template-columns:90px 1fr;gap:8px;font-size:12px;"><span class="kv-key">Орг.</span><span class="kv-val">${orgObj ? orgObj.name : ""}</span></div>
+          <div class="kv-row" style="grid-template-columns:90px 1fr;gap:8px;font-size:12px;"><span class="kv-key">Контакт</span><span class="kv-val">${contactObj ? contactObj.name : ""}</span></div>
+        </div>
+        <div class="text-block" style="margin-top:0;margin-bottom:8px;">
+          <div class="text-block-title" style="font-size:12px;padding:6px 10px;">Текст</div>
+          <div class="text-block-content" style="font-size:12px;padding:10px;white-space:pre-wrap;">${escapeHtml(t.text)}</div>
+        </div></div>`;
     } else if (workflow === "l3") {
-      const orgObj = getOrg(t.orgId); const contactObj = CONTACTS.find(c => c.id === t.contactId);
-      formHtml = `<div style="font-size: 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px;"><div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${t.id} • ${t.title}</div><div class="kv" style="gap: 4px; margin-bottom: 8px;"><div class="kv-row" style="grid-template-columns: 90px 1fr; gap: 8px; font-size: 12px;"><span class="kv-key">Орг.</span><span class="kv-val">${orgObj ? orgObj.name : ""}</span></div><div class="kv-row" style="grid-template-columns: 90px 1fr; gap: 8px; font-size: 12px;"><span class="kv-key">Контакт</span><span class="kv-val">${contactObj ? contactObj.name : ""}</span></div><div class="kv-row" style="grid-template-columns: 90px 1fr; gap: 8px; font-size: 12px;"><span class="kv-key">Продукт</span><span class="kv-val">${t.ver}</span></div></div><div class="text-block" style="margin-top: 0; margin-bottom: 8px;"><div class="text-block-title" style="font-size: 12px; padding: 6px 10px;">Текст</div><div class="text-block-content" style="font-size: 12px; padding: 10px; white-space: pre-wrap;">${t.text}</div></div>${t.clarifications && t.clarifications.length ? `<div style="font-size: 11px; color: #1e40af; background: #eff6ff; padding: 8px; border-radius: 4px;"><b>Уточнение заказчика:</b> ${t.clarifications[0].answer}</div>` : ""}</div>`;
+      const orgObj = getOrg(t.orgId);
+      const contactObj = CONTACTS.find(c => c.id === t.contactId);
+      formHtml = `<div style="font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;">
+        <div style="font-weight:600;margin-bottom:8px;font-size:14px;">${t.id} • ${t.title}</div>
+        <div class="kv" style="gap:4px;margin-bottom:8px;">
+          <div class="kv-row" style="grid-template-columns:90px 1fr;gap:8px;font-size:12px;"><span class="kv-key">Орг.</span><span class="kv-val">${orgObj ? orgObj.name : ""}</span></div>
+          <div class="kv-row" style="grid-template-columns:90px 1fr;gap:8px;font-size:12px;"><span class="kv-key">Контакт</span><span class="kv-val">${contactObj ? contactObj.name : ""}</span></div>
+          <div class="kv-row" style="grid-template-columns:90px 1fr;gap:8px;font-size:12px;"><span class="kv-key">Продукт</span><span class="kv-val">${t.ver}</span></div>
+        </div>
+        <div class="text-block" style="margin-top:0;margin-bottom:8px;">
+          <div class="text-block-title" style="font-size:12px;padding:6px 10px;">Текст</div>
+          <div class="text-block-content" style="font-size:12px;padding:10px;white-space:pre-wrap;">${escapeHtml(t.text)}</div>
+        </div>
+        ${t.clarifications && t.clarifications.length ? `<div style="font-size:11px;color:#1e40af;background:#eff6ff;padding:8px;border-radius:4px;"><b>Уточнение заказчика:</b> ${escapeHtml(t.clarifications[0].answer)}</div>` : ""}
+      </div>`;
     } else {
-      formHtml = `<div style="font-size: 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px;"><div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${t.id} • ${t.title}</div><div class="text-block" style="margin-top: 0; margin-bottom: 8px;"><div class="text-block-title" style="font-size: 12px; padding: 6px 10px;">Текст</div><div class="text-block-content" style="font-size: 12px; padding: 10px; white-space: pre-wrap;">${t.text}</div></div></div>`;
+      formHtml = `<div style="font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;">
+        <div style="font-weight:600;margin-bottom:8px;font-size:14px;">${t.id} • ${t.title}</div>
+        <div class="text-block" style="margin-top:0;margin-bottom:8px;">
+          <div class="text-block-title" style="font-size:12px;padding:6px 10px;">Текст</div>
+          <div class="text-block-content" style="font-size:12px;padding:10px;white-space:pre-wrap;">${escapeHtml(t.text)}</div>
+        </div></div>`;
     }
 
     let compHtml = `<div class="comparison-list">`;
     if (r.registered && r.comparison && r.comparison.length > 0) {
       for (const c of r.comparison) {
-        compHtml += `<div class="comp-item ${c.isError ? 'error' : 'success'}"><div class="comp-field">${c.field}</div><div class="comp-values"><span class="comp-val ${c.isError ? 'bad' : 'good'}">${c.isError ? 'Ваш ответ: ' + c.value : '✓ ' + c.value}</span>${c.isError ? `<span class="comp-val good">Нужно: ${c.expected}</span>` : ''}</div>${c.isError ? `<div class="comp-explain">${c.explain}</div>` : ''}</div>`;
+        compHtml += `<div class="comp-item ${c.isError ? 'error' : 'success'}">
+          <div class="comp-field">${c.field}</div>
+          <div class="comp-values">
+            <span class="comp-val ${c.isError ? 'bad' : 'good'}">${c.isError ? 'Ваш ответ: ' + escapeHtml(c.value) : '✓ ' + escapeHtml(c.value)}</span>
+            ${c.isError ? `<span class="comp-val good">Нужно: ${escapeHtml(c.expected)}</span>` : ''}
+          </div>
+          ${c.isError ? `<div class="comp-explain">${escapeHtml(c.explain)}</div>` : ''}
+        </div>`;
       }
-    } else { compHtml += `<div style="color: var(--sub); font-size: 13px; padding: 10px;">Не обработано.</div>`; }
+    } else {
+      compHtml += `<div style="color:var(--sub);font-size:13px;padding:10px;">Не обработано.</div>`;
+    }
     compHtml += `</div>`;
 
-    let statusHtml = r.registered ? (r.ok ? `<span class="tag ok">Успех</span>` : `<span class="tag bad">Есть ошибки</span>`) : `<span class="tag bad">Не обработано</span>`;
+    const statusHtml = r.registered
+      ? (r.ok ? `<span class="tag ok">Успех</span>` : `<span class="tag bad">Есть ошибки</span>`)
+      : `<span class="tag bad">Не обработано</span>`;
 
-    tr.innerHTML = `<td style="vertical-align: top;">${formHtml}</td><td style="vertical-align: top;">${statusHtml}</td><td style="vertical-align: top;">${compHtml}</td>`;
+    tr.innerHTML = `<td style="vertical-align:top;">${formHtml}</td><td style="vertical-align:top;">${statusHtml}</td><td style="vertical-align:top;">${compHtml}</td>`;
     tbody.appendChild(tr);
   }
 
@@ -630,6 +871,8 @@ function restart() {
   resetState();
   showScreen("screen-start");
 }
+
+// ============ Справочники ============
 
 function openOrgList() {
   const tbody = document.getElementById("org-list-body");
@@ -651,7 +894,7 @@ function openEmpList(list) {
     const tr = document.createElement("tr");
     const statusColor = emp.status === "В отпуске" ? "var(--bad)" : "var(--ok)";
     const workloadText = emp.workload !== undefined ? emp.workload : '-';
-    tr.innerHTML = `<td><b>${emp.name}</b></td><td>${emp.role}</td><td>${emp.spec}</td><td>${workloadText}</td><td style="color: ${statusColor}; font-weight: 600;">${emp.status}</td>`;
+    tr.innerHTML = `<td><b>${emp.name}</b></td><td>${emp.role}</td><td>${emp.spec}</td><td>${workloadText}</td><td style="color:${statusColor};font-weight:600;">${emp.status}</td>`;
     tbody.appendChild(tr);
   }
   showModal("modal-emp-list");
@@ -662,29 +905,93 @@ function openContacts(orgId, orgName) {
   const tbody = document.getElementById("contacts-list-body");
   tbody.innerHTML = "";
   const contacts = getContactsByOrg(orgId);
-  if (contacts.length === 0) { tbody.innerHTML = "<tr><td colspan='2'>Нет контактных лиц</td></tr>"; }
-  else { for (const c of contacts) { const tr = document.createElement("tr"); tr.innerHTML = `<td>${c.name}</td><td>${c.title}</td>`; tbody.appendChild(tr); } }
+  if (contacts.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='2'>Нет контактных лиц</td></tr>";
+  } else {
+    for (const c of contacts) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${c.name}</td><td>${c.title}</td>`;
+      tbody.appendChild(tr);
+    }
+  }
   showModal("modal-contacts");
 }
+
+// ============ Problems ============
+
+function openProblems() {
+  const body = document.getElementById("problems-body");
+  body.innerHTML = "";
+  const resolvedIds = Object.keys(state.getResults(3)).filter(id => state.getResults(3)[id].registered);
+
+  if (resolvedIds.length === 0) {
+    body.innerHTML = "<div style='color:var(--sub);font-size:14px;'>Пока нет зарегистрированных Problem Records. Они появляются, когда вы закрываете обращение с исходом «Known Error».</div>";
+  }
+
+  let displayProblems = [...PROBLEMS];
+
+  if (state.createdProblems && state.createdProblems.includes("PRB-3")) {
+    displayProblems.push({
+      id: "PRB-3",
+      status: "known_error",
+      incidents: ["TK-310"],
+      incidentsLinked: ["TK-310"],
+      title: "В Про.Документы 4.9 отсутствует фильтрация уведомлений по ролям",
+      rootCause: "Функциональный пробел версии 4.9: профиль уведомлений поддерживает только событие ALL, фильтрация по ролям и событиям появилась в 5.0. Пользователи 4.9 вынуждены получать все уведомления или отключать их полностью",
+      impact: "среднее",
+      prob: "высокая",
+      owner: "E6",
+      method: "5 почему",
+      rfc: "Бэкпортировать механизм фильтрации уведомлений по ролям/событиям из 5.0 в 4.9 либо согласовать план обновления клиентов 4.9 до 5.x. До внедрения — ручная настройка событий «на согласовании мне» и «отклонено».",
+      archiveList: [
+        { id: "TK-310", title: "Массовая рассылка уведомлений парализует работу отдела", org: "АО «Северная Мебель»" }
+      ]
+    });
+  }
+
+  for (const p of displayProblems) {
+    const archiveList = p.archiveList || ARCHIVE_INCIDENTS[p.id] || [];
+    const linked = archiveList.map(inc => {
+      return `<li style="margin-bottom:4px;">${inc.id} • ${inc.title} <span class="tag ok" style="font-size:11px;">закрыто</span> <span style="color:var(--sub);font-size:11px;">(${inc.org})</span></li>`;
+    }).join("");
+    const card = document.createElement("div");
+    card.style.cssText = "border:1px solid var(--border);border-radius:8px;padding:14px;background:#f8fafc;";
+    const statusBadge = p.status === "resolved"
+      ? '<span class="tag ok" style="margin-left:8px;">Исправлена</span>'
+      : '<span class="tag bad" style="margin-left:8px;">В работе (известная ошибка)</span>';
+
+    card.innerHTML = `
+      <div style="font-weight:600;margin-bottom:6px;">${p.id} • ${p.title} ${statusBadge}</div>
+      <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">Первопричина: ${p.rootCause}</div>
+      <div style="font-size:13px;"><b>Связанные инциденты:</b><ul style="margin:6px 0 8px 18px;padding:0;">${linked}</ul></div>
+      <div style="font-size:13px;"><b>Владелец:</b> ${DataStore.getEmployeesL3().find(e => e.id === p.owner)?.name || p.owner} • <b>Метод:</b> ${p.method} • <b>Влияние:</b> ${p.impact} • <b>Вероятность:</b> ${p.prob}</div>
+      <div style="font-size:13px;margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px;"><b>RFC:</b> ${p.rfc}</div>
+    `;
+    body.appendChild(card);
+  }
+  showModal("modal-problems");
+}
+
+// ============ База знаний ============
 
 let KB = [];
 
 function bootstrapKb() {
   KB = [
-    { title: "О компании «Про.Софт»", html: `<h3>О компании «Про.Софт»</h3><p><b>ООО «Про.Софт»</b> - российский разработчик корпоративного программного обеспечения.</p><p>Более 12 лет создаёт и развивает продукты для электронного документооборота, управления продажами и закупками.</p>` },
-    { title: "Продукты компании", html: `<h3>Продукты</h3><table><tr><th>Продукт</th><th>Назначение</th></tr><tr><td>Про.Документы</td><td>Система электронного документооборота (СЭД). Позволяет управлять договорами, внутренним согласованием документов, ведением карточек контрагентов и настройкой маршрутов.</td></tr><tr><td>Про.Продажи</td><td>Система управления взаимоотношениями с клиентами (CRM). Позволяет вести клиентскую базу, управлять сделками и воронкой продаж, строить аналитические отчеты.</td></tr><tr><td>Про.Закупки</td><td>Система управления закупками (SRM). Позволяет создавать и согласовывать заявки на закупку, вести каталог товаров и поставщиков, контролировать исполнения договоров.</td></tr></table>` },
+    { title: "О компании «Про.Софт»", html: `<h3>О компании «Про.Софт»</h3><p><b>ООО «Про.Софт»</b> — российский разработчик корпоративного программного обеспечения.</p>` },
+    { title: "Продукты компании", html: `<h3>Продукты</h3><table><tr><th>Продукт</th><th>Назначение</th></tr><tr><td>Про.Документы</td><td>СЭД: договоры, согласование документов, карточки контрагентов, маршруты.</td></tr><tr><td>Про.Продажи</td><td>CRM: клиенты, сделки, воронка, аналитика.</td></tr><tr><td>Про.Закупки</td><td>SRM: заявки, каталог, договоры закупок.</td></tr></table>` },
     { title: "Типы обращений", html: `<h3>Типы обращений</h3><table><tr><th>Тип</th><th>Описание</th></tr><tr><td>Инцидент</td><td>Незапланированный сбой или снижение качества работы ПО.</td></tr><tr><td>Запрос на обслуживание</td><td>Стандартная процедура (дистрибутив, доступ, лицензия).</td></tr><tr><td>Консультация</td><td>Вопрос по использованию, настройке или возможностям продукта.</td></tr></table>` },
-    { title: "Линии поддержки и Эскалация", html: `<h3>Линии поддержки</h3><p>Работа техподдержки делится на уровни (линии). Каждая линия решает задачи определенной сложности.</p><table><tr><th>Линия</th><th>Задачи</th><th>Кто работает</th></tr><tr><td>1-я линия (L1)</td><td>Прием обращений, регистрация, консультации по базовым вопросам, выдача доступов и дистрибутивов.</td><td>Иванов Иван, Фёдорова Ольга, Волкова Дарья</td></tr><tr><td>2-я линия (L2)</td><td>Решение типовых инцидентов, требующих экспертизы в продукте (настройка, анализ логов, обходные пути).</td><td>Петрова Анна, Сидоров Олег, Никитин Павел, Морозов Артём</td></tr><tr><td>3-я линия (L3)</td><td>Сложные инциденты, баги в коде, проблемы с БД и инфраструктурой. Передача разработчикам.</td><td>Кузнецов Сергей</td></tr></table><h3>Эскалация</h3><p><b>Эскалация</b> – это передача обращения на более высокий уровень компетенции или ответственности, когда текущих полномочий, знаний или ресурсов недостаточно для решения. Это рабочий инструмент, а не признак плохой работы!</p><ul><li><b>Функциональная (горизонтальная):</b> привлечение более опытного коллеги (например, с L1 на L2 или L3).</li><li><b>Иерархическая (вертикальная):</b> подключение руководителя или менеджера (например, при риске нарушения SLA, недовольстве клиента, вопросах оплаты/сроков).</li></ul><p><i>Когда эскалировать:</i> ситуация выходит за рамки компетенции; требуется привлечение смежного отдела; есть риск нарушения SLA; клиент проявляет недовольство.</p>` },
-    { title: "Управление инцидентами", html: `<h3>Управление инцидентами (Incident Management)</h3><p>Практика ITIL, цель которой - как можно быстрее восстановить нормальную работу ИТ-услуг.</p><p><b>Жизненный цикл инцидента:</b></p><ol><li><b>Выявление:</b> пользователь или мониторинг зафиксировали сбой.</li><li><b>Регистрация:</b> создание тикета, фиксация данных.</li><li><b>Классификация:</b> определение категории (кому передать).</li><li><b>Приоритизация:</b> оценка важности и срочности (по матрице).</li><li><b>Распределение:</b> назначение исполнителя.</li><li><b>Диагностика:</b> поиск причины (сбор логов, опрос пользователя).</li><li><b>Решение:</b> устранение причин/условий (или предоставление обходного пути).</li><li><b>Закрытие:</b> подтверждение решения у пользователя.</li></ol><p><b>Важно:</b> Инцидент - это симптом. Мы лечим симптом (восстанавливаем работу). Причину лечит управление проблемами.</p>` },
-    { title: "Управление проблемами", html: `<h3>Управление проблемами (Problem Management)</h3><p>Практика ITIL, которая находит корневые причины инцидентов и не дает сбоям повторяться.</p><p><b>Проблема</b> – это скрытая причина одного или нескольких инцидентов.</p><p><b>Жизненный цикл проблемы:</b></p><ol><li>Выявление (по повторяющимся инцидентам).</li><li>Регистрация (назначение владельца).</li><li>Категоризация.</li><li>Приоритизация (оценка влияния и вероятности повторения).</li><li><b>Расследование:</b> поиск Root Cause (первопричины). Используются методы: 5 почему, диаграмма Исикавы.</li><li>Решение: создание запроса на изменение (RFC) для разработчиков.</li><li>Закрытие (после внедрения исправления и проверки).</li><li>Контроль (наблюдение, не вернулась ли проблема).</li></ol><p><b>Известная ошибка (Known Error):</b> проблема, причина которой найдена, но исправление еще не внедрено. Для нее фиксируется обходное решение, которым пользуется поддержка.</p>` },
-    { title: "Каналы связи", html: `<h3>Каналы связи</h3><p>Канал связи показывает, каким именно способом заказчик обратился в поддержку. Это важно для понимания контекста обращения и выбора способа ответа.</p><table><tr><th>Канал</th><th>Описание</th></tr><tr><td>Email</td><td>Письмо на почту поддержки. Позволяет приложить скриншоты и подробно описать проблему.</td></tr><tr><td>Телефон</td><td>Звонок на горячую линию. Требует оперативного ответа, но может быть менее детальным. Регистратор фиксирует суть разговора.</td></tr><tr><td>Портал самообслуживания</td><td>Заявка, которую пользователь самостоятельно оформил в личном кабинете. Обычно содержит структурированную информацию.</td></tr><tr><td>Чат на сайте</td><td>Онлайн-консультация. Позволяет быстро уточнить детали в диалоге.</td></tr><tr><td>Мессенджер</td><td>Обращение через Telegram, WhatsApp и другие системы. Не всегда официальный канал, но часто используется для быстрых вопросов.</td></tr></table>` },
-    { title: "Важность и срочность. Матрица приоритета", html: `<h3>Матрица</h3><table><tr><th>Важность \\ Срочность</th><th>Высокая</th><th>Средняя</th><th>Низкая</th></tr><tr><td>Высокая</td><td>Критический</td><td>Высокий</td><td>Средний</td></tr><tr><td>Средняя</td><td>Высокий</td><td>Средний</td><td>Низкий</td></tr><tr><td>Низкая</td><td>Средний</td><td>Низкий</td><td>Низкий</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Согласно регламентам компании, для типов обращений <b>«Запрос на обслуживание»</b> и <b>«Консультация»</b> по умолчанию автоматически устанавливается <b>средняя важность</b> и <b>средняя срочность</b> (Приоритет «Средний»). Это связано с тем, что данные обращения не блокируют критически важные бизнес-процессы.</p><p>Однако, если в тексте обращения заказчик <u>явно указывает</u> на жесткие дедлайны, остановку работы или высокую критичность (например, «нужно срочно», «работа встала»), регистратор обязан изменить важность или срочность вручную в соответствии с матрицей.</p>` },
-    { title: "SLA и сроки", html: `<table><tr><th>Приоритет</th><th>Срок реакции</th><th>Время решения</th></tr><tr><td>Критический</td><td>2 часа</td><td>6 часов</td></tr><tr><td>Высокий</td><td>4 часа</td><td>12 часов</td></tr><tr><td>Средний</td><td>8 часов</td><td>24 часа</td></tr><tr><td>Низкий</td><td>24 часа</td><td>32 часа</td></tr></table>` },
-    { title: "Категории и подкатегории", html: `<h3>Категории и подкатегории</h3><p><b>Категория</b> - это крупный модуль или область функционала внутри выбранного продукта.</p><p><b>Подкатегория</b> - это конкретная функция или действие внутри этого модуля. Выбор подкатегории зависит от того, какая категория была выбрана до этого.</p><p style="margin-top: 16px;"><b>Структура категорий по продуктам:</b></p><table><tr><th>Продукт</th><th>Категория</th><th>Возможные подкатегории</th></tr><tr><td rowspan="4"><b>Про.Документы</b></td><td>Документооборот</td><td>Регистрация документов, Согласование документов, Хранение и поиск документов</td></tr><tr><td>Договоры и контрагенты</td><td>Карточки контрагенты, Договоры, Поручения по договорам</td></tr><tr><td>Интеграции и обмен</td><td>Интеграция с 1С, Интеграция с ЭДО, Почтовый обмен</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Продажи</b></td><td>Клиенты и контакты</td><td>Карточка клиента, Контакты и связи, Сегменты и группы</td></tr><tr><td>Сделки и воронка</td><td>Создание и ведение сделок, Этапы воронки, Задачи и напоминания</td></tr><tr><td>Отчёты и аналитика</td><td>Стандартные отчёты, Дашборды, Экспорт данных</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr><tr><td rowspan="4"><b>Про.Закупки</b></td><td>Заявки на закупку</td><td>Создание заявки, Согласование заявки, Статусы и маршруты</td></tr><tr><td>Поставщики и каталог</td><td>Карточка поставщика, Каталог товаров/услуг, Оценка поставщиков</td></tr><tr><td>Договоры закупок</td><td>Создание договора, Согласование договора, Исполнение и контроль</td></tr><tr><td>Стандартные процедуры</td><td>Дистрибутив и обновления, Доступ к сайту поддержки, Лицензии на модули</td></tr></table><p style="margin-top: 16px; color: var(--bad);"><b>Важно:</b> Категория «Стандартные процедуры» присутствует во всех трех продуктах. Она используется для стандартных процедур: выдачи дистрибутивов, доступов, лицензий. Тип обращения в таком случае должен быть «Запрос на обслуживание».</p>` },
-    { title: "Структура карточки обращения", html: `<h3>Структура карточки обращения</h3><table><tr><th>Поле</th><th>Описание</th></tr><tr><td><b>Организация</b></td><td>Наименование организации, от которой поступило обращение. Полное название и описание можно узнать в <span class="kb-link" onclick="goToKbTab('О компании «Про.Софт»')">«Справочнике организаций»</span>.</td></tr><tr><td><b>Контактное лицо</b></td><td>Наименование контактного лица. Указывает, кто именно является инициатором обращения. Список доступных контактов можно посмотреть в «Справочнике организаций», нажав кнопку «Контактные лица».</td></tr><tr><td><b>Канал связи</b></td><td>Откуда поступило обращение (Email, Телефон, Портал, Чат и т.д.). Необходим для понимания контекста и способа ответа. Подробнее о каналах связи можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Каналы связи')">«Каналы связи»</span>.</td></tr><tr><td><b>Заголовок</b></td><td>Краткая суть инцидента или запроса. Обычно заполняется в формате «ошибка + действие, при котором она возникает».</td></tr><tr><td><b>Описание ситуации</b></td><td>Вся информация по обращению, скопированная из формы заказчика.</td></tr><tr><td><b>Тип обращения</b></td><td>Группа (тип), к которой относится обращение: инцидент, запрос на обслуживание или консультация. Подробнее можно узнать в разделе Базы знаний <span class="kb-link" onclick="goToKbTab('Типы обращений')">«Типы обращений»</span>.</td></tr><tr><td><b>Продукт</b></td><td>Программный продукт, с которым возникла проблема или по которому задан вопрос.</td></tr><tr><td><b>Категория</b></td><td>Модуль или область продукта. Зависит от выбранного продукта.</td></tr><tr><td><b>Подкатегория</b></td><td>Конкретный функционал внутри модуля. Зависит от выбранной категории.</td></tr><tr><td><b>Продукты и версии</b></td><td>Список продуктов и их версий, которые используются у заказчика.</td></tr><tr><td><b>Важность</b></td><td>Степень влияния проблемы на бизнес-процессы заказчика.</td></tr><tr><td><b>Срочность</b></td><td>То, как быстро нужно решить проблему.</td></tr><tr><td><b>Номер</b></td><td>Уникальный идентификатор обращения в системе.</td></tr><tr><td><b>Ответственный</b></td><td>Сотрудник поддержки, который взял обращение в работу.</td></tr><tr><td><b>Состояние обращения</b></td><td>Текущий статус обращения.</td></tr><tr><td><b>Код закрытия</b></td><td>Причина, по которой обращение было закрыто.</td></tr><tr><td><b>Приоритет</b></td><td>Рассчитывается автоматически на основе Важности и Срочности по <span class="kb-link" onclick="goToKbTab('Важность и срочность. Матрица приоритета')">матрице приоритетов</span>.</td></tr><tr><td><b>Срок реакции</b></td><td>Время, за которое поддержка должна отреагировать на обращение.</td></tr><tr><td><b>Время решения</b></td><td>Время, отведенное на полное решение проблемы.</td></tr></table>` },
-    { title: "Порядок регистрации", html: `<ol><li>Прочитать форму</li><li>При необходимости запросить уточнение у заказчика</li><li>Проверить «Справочник организаций»</li><li>Выбрать тип обращения</li><li>Определить продукт/категорию/подкатегорию</li><li>Проверить продукты и версии</li><li>Оценить важность и срочность</li><li>Зарегистрировать</li></ol>` },
+    { title: "Линии поддержки и Эскалация", html: `<h3>Линии поддержки</h3><table><tr><th>Линия</th><th>Задачи</th><th>Кто работает</th></tr><tr><td>1-я (L1)</td><td>Приём, регистрация, консультации, доступы.</td><td>Иванов, Фёдорова, Волкова</td></tr><tr><td>2-я (L2)</td><td>Типовые инциденты, настройка, анализ логов, обходные пути.</td><td>Петрова, Сидоров, Никитин, Морозов</td></tr><tr><td>3-я (L3)</td><td>Сложные баги, БД, инфраструктура, передача разработчикам.</td><td>Кузнецов</td></tr></table><h3>Эскалация</h3><p><b>Функциональная:</b> привлечение более опытного коллеги. <b>Иерархическая:</b> подключение руководителя/менеджера (риск SLA, недовольство, оплата/сроки).</p>` },
+    { title: "Управление инцидентами", html: `<h3>Управление инцидентами</h3><ol><li>Выявление</li><li>Регистрация</li><li>Классификация</li><li>Приоритизация (матрица)</li><li>Распределение</li><li>Диагностика</li><li>Решение (или обходка)</li><li>Закрытие</li></ol><p>Инцидент — симптом. Причину лечит управление проблемами.</p>` },
+    { title: "Управление проблемами", html: `<h3>Управление проблемами (ITIL)</h3><p><b>Проблема</b> — скрытая причина одного или нескольких инцидентов.</p><p>Known Error — причина найдена, фикс не внедрён, действует обходное решение.</p>` },
+    { title: "Каналы связи", html: `<h3>Каналы связи</h3><ul><li>Email</li><li>Телефон</li><li>Портал самообслуживания</li><li>Чат на сайте</li><li>Мессенджер</li></ul>` },
+    { title: "Важность и срочность. Матрица приоритета", html: `<h3>Матрица</h3><table><tr><th>В\\С</th><th>Высокая</th><th>Средняя</th><th>Низкая</th></tr><tr><td>Высокая</td><td>Критический</td><td>Высокий</td><td>Средний</td></tr><tr><td>Средняя</td><td>Высокий</td><td>Средний</td><td>Низкий</td></tr><tr><td>Низкая</td><td>Средний</td><td>Низкий</td><td>Низкий</td></tr></table><p style="color:var(--bad);"><b>Важно:</b> для «Запрос на обслуживание» и «Консультация» по умолчанию средняя/средняя. Если заказчик явно указал критичность — меняйте вручную.</p>` },
+    { title: "SLA и сроки", html: `<table><tr><th>Приоритет</th><th>Реакция</th><th>Решение</th></tr><tr><td>Критический</td><td>2 ч</td><td>6 ч</td></tr><tr><td>Высокий</td><td>4 ч</td><td>12 ч</td></tr><tr><td>Средний</td><td>8 ч</td><td>24 ч</td></tr><tr><td>Низкий</td><td>24 ч</td><td>32 ч</td></tr></table>` },
+    { title: "Категории и подкатегории", html: `<h3>Категории/подкатегории</h3><p>Категория — модуль продукта; подкатегория — функция внутри модуля. Для всех продуктов есть «Стандартные процедуры» (дистрибутив, доступ, лицензии) — это всегда «Запрос на обслуживание».</p>` },
+    { title: "Структура карточки обращения", html: `<h3>Структура карточки</h3><p>Организация → Контакт → Канал → Заголовок → Описание → Тип → Продукт → Категория → Подкатегория → Версии → Важность/Срочность → Приоритет/SLA.</p>` },
+    { title: "Порядок регистрации", html: `<ol><li>Прочитать</li><li>Уточнить</li><li>Организация</li><li>Тип</li><li>Продукт/Категория/Подкатегория</li><li>Версии</li><li>Важность/Срочность</li><li>Зарегистрировать</li></ol>` },
     { title: "Коды закрытия", html: `<ul><li>Решено</li><li>Решено инициатором</li><li>Отказано</li><li>Недостаточно информации</li><li>Дубликат</li><li>Передано</li></ul>` },
-    { title: "Частые ошибки", html: `<ul><li>Путаница важности и срочности</li><li>Неверный продукт/категория/подкатегория</li><li>Неверная версия</li><li>Не выбран тип обращения</li></ul>` },
+    { title: "Частые ошибки", html: `<ul><li>Путаница важности/срочности</li><li>Неверный продукт/категория/подкатегория</li><li>Неверная версия</li><li>Не выбран тип</li></ul>` },
     { title: "Как работать на 2-й линии", html: KB_L3[0].html },
     { title: "Диагностика: что читать в логах", html: KB_L3[1].html },
     { title: "Обходное и радикальное решение", html: KB_L3[2].html },
@@ -715,10 +1022,16 @@ function buildKb() {
 }
 
 function openKb() { showModal("modal-kb"); }
-function switchKbTab(title) { const buttons = document.querySelectorAll(".kb-menu-item"); for (const btn of buttons) { if (btn.textContent === title) { btn.click(); break; } } }
+function switchKbTab(title) {
+  const buttons = document.querySelectorAll(".kb-menu-item");
+  for (const btn of buttons) {
+    if (btn.textContent === title) { btn.click(); break; }
+  }
+}
 function goToKbTab(title) { openKb(); switchKbTab(title); }
 
-// Создание и применение снимков состояния
+// ============ Snapshot / Level select ============
+
 function makeSnapshot() {
   const level = state.level;
   const snap = {
