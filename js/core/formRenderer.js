@@ -46,10 +46,15 @@ var FormRenderer = {
       container.addEventListener('change', (e) => {
         this.updateVisibility(container);
         this.refreshDynamicOptions(container, e.target.id);
-        if (typeof l3Validate === 'function' && typeof state !== 'undefined' && state.level === 3) l3Validate();
+        if (context.btnId) {
+          this.validate(containerId, schema, context.btnId, context.hintId, context.extraCheck);
+        }
       });
       container.addEventListener('input', () => {
         this.updateVisibility(container);
+        if (context.btnId) {
+          this.validate(containerId, schema, context.btnId, context.hintId, context.extraCheck);
+        }
       });
     }
   },
@@ -238,6 +243,53 @@ var FormRenderer = {
     };
     collect(schema.fields);
     return data;
+  },
+
+    // Универсальная валидация формы на основе схемы
+  validate: function(containerId, schema, btnId, hintId, extraCheck) {
+    const formData = this.getFormData(containerId, schema);
+    const missing = [];
+    let ok = true;
+
+    if (extraCheck && !extraCheck()) ok = false;
+
+    for (const field of schema.fields) {
+      if (!field.required) continue;
+
+      if (field.type === 'composite') {
+        const fieldset = document.getElementById('field-' + field.id);
+        if (fieldset && fieldset.style.display !== 'none') {
+          for (const sub of field.fields) {
+            const val = formData[sub.id];
+            if (sub.required && (!val || val.length === 0 || (typeof val === 'string' && val.trim() === ''))) {
+              missing.push(sub.label);
+              ok = false;
+            }
+          }
+        }
+      } else {
+        const val = formData[field.id];
+        if (!val || val.length === 0 || (typeof val === 'string' && val.trim() === '')) {
+          missing.push(field.label);
+          ok = false;
+        }
+      }
+    }
+
+    const btn = document.getElementById(btnId);
+    const hint = hintId ? document.getElementById(hintId) : null;
+
+    if (btn) btn.disabled = !ok;
+
+    if (hint) {
+      if (!ok) {
+        hint.style.display = "block";
+        hint.innerHTML = missing.length > 0 ? "Заполните: " + missing.join(", ") : "Заполните обязательные поля";
+      } else {
+        hint.style.display = "none";
+        hint.textContent = "";
+      }
+    }
   },
 
   // Рендерит таб-навигацию и контент по декларации schema.tabs.

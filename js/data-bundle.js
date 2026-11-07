@@ -1947,10 +1947,91 @@ var SCHEMA_L3 = {
   ]
 };
 
-var TICKETS_L4 = [];
+var TICKETS_L4 = [
+  {
+    "id": "PRB-401",
+    "orgId": "ORG1",
+    "contactId": "C1",
+    "channel": "Email",
+    "type": "Инцидент",
+    "prod": "Про.Документы",
+    "cat": "Документооборот",
+    "sub": "Согласование документов",
+    "ver": "Про.Документы 5.2",
+    "imp": "высокая",
+    "urg": "высокая",
+    "title": "Глобальный сбой маршрутизации",
+    "text": "Описание инцидента...",
+    "clarifications": [
+      {
+        "label": "Уточнить детали",
+        "answer": "Ответ заказчика..."
+      }
+    ],
+    "diagnostics": [
+      {
+        "id": "log",
+        "label": "Логи",
+        "content": "Текст логов..."
+      }
+    ],
+    "rootKeywords": [
+      "маршрут",
+      "сбой",
+      "ошибка"
+    ],
+    "workarounds": [
+      "Обходной путь 1",
+      "Обходной путь 2"
+    ],
+    "workaroundCorrect": 0,
+    "radical": [
+      "Радикальное решение 1",
+      "Радикальное решение 2"
+    ],
+    "radicalCorrect": 0,
+    "outcome": {
+      "type": "known_error",
+      "correct": "known_error",
+      "explain": "Пояснение, почему это Known Error"
+    },
+    "linkedProblemId": "PRB-1",
+    "problem": null
+  }
+];
 
 var SCHEMA_L4 = {
-  "fields": []
+  "fields": [
+    {
+      "id": "root",
+      "label": "Корневая причина *",
+      "type": "textarea",
+      "required": true,
+      "validate": {
+        "rule": "keywords",
+        "path": "rootKeywords"
+      }
+    },
+    {
+      "id": "outcome",
+      "label": "Исход *",
+      "type": "select",
+      "required": true,
+      "options": [
+        {
+          "value": "resolved",
+          "label": "Решено"
+        },
+        {
+          "value": "known_error",
+          "label": "Known Error"
+        }
+      ],
+      "validate": {
+        "rule": "l3_logic"
+      }
+    }
+  ]
 };
 
 var LEVELS = [
@@ -1998,17 +2079,17 @@ var LEVELS = [
   },
   {
     "id": 4,
-    "title": "Уровень 4 (stub)",
-    "desc": "Заглушка для проверки манифестов.",
-    "workflow": "l4",
-    "queueScreen": null,
-    "queueList": null,
-    "queueDone": null,
-    "queueTotal": null,
-    "queueFinish": null,
-    "introModal": null,
-    "workScreen": null,
-    "workTitle": null
+    "title": "Уровень 4 — Problem Manager",
+    "desc": "Расследование корневых причин и управление Problem Records.",
+    "workflow": "l3",
+    "queueScreen": "screen-queue-l3",
+    "queueList": "queue-list-l3",
+    "queueDone": "q-done-l3",
+    "queueTotal": "q-total-l3",
+    "queueFinish": "btn-finish-l3",
+    "introModal": "modal-l3-intro",
+    "workScreen": "screen-work-l3",
+    "workTitle": "Рабочее место Problem Manager"
   }
 ];
 

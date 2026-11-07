@@ -1,1 +1,22 @@
-{ "fields": [] }
+{
+    "fields": [
+        {
+            "id": "root",
+            "label": "Корневая причина *",
+            "type": "textarea",
+            "required": true,
+            "validate": { "rule": "keywords", "path": "rootKeywords" }
+        },
+        {
+            "id": "outcome",
+            "label": "Исход *",
+            "type": "select",
+            "required": true,
+            "options": [
+                { "value": "resolved", "label": "Решено" },
+                { "value": "known_error", "label": "Known Error" }
+            ],
+            "validate": { "rule": "l3_logic" }
+        }
+    ]
+}

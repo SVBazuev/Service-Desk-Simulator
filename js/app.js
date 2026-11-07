@@ -55,7 +55,10 @@ function init() {
   document.getElementById("btn-l3-cancel").addEventListener("click", l3GoBack);
   document.getElementById("btn-back-queue-l3").addEventListener("click", l3GoBack);
 
-  document.getElementById("l3-dup-of").addEventListener("change", l3Validate);
+  document.getElementById("l3-dup-of").addEventListener("change", () => {
+    const schema = DataStore.getSchema(state.level);
+    FormRenderer.validate("l3-dynamic-form", schema, "btn-l3-submit", "l3-submit-hint");
+  });
 
   const goBack = () => {
     state.currentId = null;
@@ -90,10 +93,14 @@ function init() {
     showScreen("screen-queue-l2");
   });
 
-  // Wire btn-finish* via manifest (replaces hardcoded btn-finish / btn-finish-l2 / btn-finish-l3)
+  // Wire btn-finish* via manifest
   DataStore.getLevels().forEach(lvl => {
     const btn = lvl.queueFinish ? document.getElementById(lvl.queueFinish) : null;
-    if (btn) btn.addEventListener("click", () => showResults(lvl.id));
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (state.level === lvl.id) showResults(state.level);
+      });
+    }
   });
 
   buildKb();
@@ -171,14 +178,18 @@ function renderQueue() {
 function openWork(id) {
   const workflow = DataStore.getLevelWorkflow(state.level);
   if (workflow === "l3") { openL3Work(id); return; }
-  const isL2 = workflow === "l2";
+
   const t = getTicket(id);
   if (!t) return;
   state.currentId = id;
+  const isL2 = workflow === "l2";
 
   // 1. Рендерим форму на основе схемы уровня
   const schema = DataStore.getSchema(state.level);
-  FormRenderer.render("dynamic-form-container", schema);
+  FormRenderer.render("dynamic-form-container", schema, {
+    btnId: isL2 ? "btn-assign-l2" : "btn-reg",
+    extraCheck: () => state.orgVersions && state.orgVersions.length > 0
+  });
 
   // 2. Навешиваем обработчики на новые поля
   document.getElementById("card-org").addEventListener("change", onCardOrg);
@@ -186,17 +197,7 @@ function openWork(id) {
   document.getElementById("card-cat").addEventListener("change", onCardCat);
   document.getElementById("card-imp").addEventListener("change", onCardPri);
   document.getElementById("card-urg").addEventListener("change", onCardPri);
-  document.getElementById("card-cont").addEventListener("change", validate);
-  document.getElementById("card-chan").addEventListener("change", validate);
   document.getElementById("card-type").addEventListener("change", onCardType);
-  document.getElementById("card-title").addEventListener("input", validate);
-  document.getElementById("card-desc").addEventListener("input", validate);
-  document.getElementById("card-sub").addEventListener("change", validate);
-
-  if (isL2) {
-    document.getElementById("card-assignee").addEventListener("change", validate);
-    document.getElementById("card-comment").addEventListener("change", validate);
-  }
 
   // 3. Заполняем базовые списки опций
   fillSelect(document.getElementById("card-org"), DataStore.getOrgs().map(o => ({value:o.id, label:o.name})));
@@ -274,12 +275,13 @@ function openWork(id) {
     document.getElementById("auto-prio").textContent = "-";
     document.getElementById("auto-react").textContent = "-";
     document.getElementById("auto-sol").textContent = "-";
-    document.getElementById("btn-reg").disabled = true;
   }
 
   document.getElementById("ro-num").textContent = t.id;
   showScreen("screen-work");
-  validate();
+
+  // Принудительно запускаем валидацию после заполнения полей
+  FormRenderer.validate("dynamic-form-container", schema, isL2 ? "btn-assign-l2" : "btn-reg", null, () => state.orgVersions && state.orgVersions.length > 0);
 }
 
 function onCardOrg() {
@@ -292,7 +294,6 @@ function onCardOrg() {
   fillSelect(document.getElementById("card-sub"), []);
   state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx, name: p.name, ver: p.ver }));
   renderVerList();
-  validate();
 }
 
 function renderVerList() {
@@ -300,7 +301,7 @@ function renderVerList() {
   list.innerHTML = "";
   if (!state.orgVersions || state.orgVersions.length === 0) {
     list.innerHTML = "<div style='color:var(--sub);font-size:13px'>Нет данных</div>";
-    renderAddProdSelect(); validate(); return;
+    renderAddProdSelect(); return;
   }
   for (const v of state.orgVersions) {
     const row = document.createElement("div");
@@ -308,15 +309,14 @@ function renderVerList() {
     row.innerHTML = `<div class="ver-name">${v.name}</div><select data-ver-id="${v.id}"><option value="${v.ver}">${v.ver}</option></select><button class="ver-del" data-del-id="${v.id}">×</button>`;
     list.appendChild(row);
   }
-  list.querySelectorAll("select").forEach(sel => sel.addEventListener("change", validate));
   list.querySelectorAll(".ver-del").forEach(btn => {
     btn.addEventListener("click", () => {
       const idv = parseInt(btn.getAttribute("data-del-id"));
       state.orgVersions = state.orgVersions.filter(x => x.id !== idv);
-      renderVerList(); validate();
+      renderVerList();
     });
   });
-  renderAddProdSelect(); validate();
+  renderAddProdSelect();
 }
 
 function renderAddProdSelect() {
@@ -341,7 +341,7 @@ function addProductToCard() {
   const p = full.find(x => (x.name + " " + x.ver) === name || x.name === name);
   if (!p || state.orgVersions.some(v => v.name === p.name)) return;
   state.orgVersions.push({ id: Date.now(), name: p.name, ver: p.ver });
-  renderVerList(); validate();
+  renderVerList();
 }
 
 function onCardProd() {
@@ -349,7 +349,6 @@ function onCardProd() {
   fillSelect(document.getElementById("card-cat"), []);
   fillSelect(document.getElementById("card-sub"), []);
   if (p && TAX[p]) { for (const c of TAX[p]) { const opt = document.createElement("option"); opt.value = c.name; opt.textContent = c.name; document.getElementById("card-cat").appendChild(opt); } }
-  validate();
 }
 
 function onCardCat() {
@@ -358,7 +357,6 @@ function onCardCat() {
   fillSelect(document.getElementById("card-sub"), []);
   const subs = getSubList(p, cname);
   for (const s of subs) { const opt = document.createElement("option"); opt.value = s; opt.textContent = s; document.getElementById("card-sub").appendChild(opt); }
-  validate();
 }
 
 function onCardType() {
@@ -384,31 +382,6 @@ function onCardPri() {
   const m = calcPriority(imp, urg);
   if (m) { document.getElementById("auto-prio").textContent = m.prio; document.getElementById("auto-react").textContent = m.react; document.getElementById("auto-sol").textContent = m.sol; }
   else { document.getElementById("auto-prio").textContent = "-"; document.getElementById("auto-react").textContent = "-"; document.getElementById("auto-sol").textContent = "-"; }
-  validate();
-}
-
-function validate() {
-  const need = ["card-org","card-cont","card-chan","card-type","card-prod","card-cat","card-sub","card-imp","card-urg"];
-  let ok = true;
-  for (const id of need) { const el = document.getElementById(id); if (!el || el.value === "") ok = false; }
-
-  const titleEl = document.getElementById("card-title");
-  if (titleEl && titleEl.value.trim() === "") ok = false;
-
-  const descEl = document.getElementById("card-desc");
-  if (descEl && descEl.value.trim() === "") ok = false;
-
-  if (!state.orgVersions || state.orgVersions.length === 0) ok = false;
-
-  if (DataStore.getLevelWorkflow(state.level) === "l2") {
-    const ass = document.getElementById("card-assignee");
-    const com = document.getElementById("card-comment");
-    if (!ass || ass.value === "") ok = false;
-    if (!com || com.value === "") ok = false;
-    document.getElementById("btn-assign-l2").disabled = !ok;
-  } else {
-    document.getElementById("btn-reg").disabled = !ok;
-  }
 }
 
 function register() {
@@ -459,51 +432,16 @@ function assignL2() {
   if (assignedEmp && assignedEmp.workload !== undefined) assignedEmp.workload += 1;
 }
 
-// ===== УРОВЕНЬ 3: Инженер 2-й линии =====
+// ===== УРОВЕНЬ 3/4: Инженер / Problem Manager =====
 
 function l3RequestClarify() {
   const t = getTicket(state.currentId);
   if (!t || !t.clarifications || t.clarifications.length === 0) return;
   state.l3.requestedClarify = true;
   state.l3.clarified = true;
-  const schema = DataStore.getSchema(3);
+  const schema = DataStore.getSchema(state.level);
   const action = (schema.actions || []).find(a => a.id === "clarify");
   if (action) FormRenderer.applyAction(action, { ticket: t });
-}
-
-function l3Validate() {
-  const t = DataStore.getTicket(3, state.currentId);
-  const hint = document.getElementById("l3-submit-hint");
-  const btn = document.getElementById("btn-l3-submit");
-  if (!t) return;
-
-  const schema = DataStore.getSchema(3);
-  const formData = FormRenderer.getFormData("l3-dynamic-form", schema);
-
-  const missing = [];
-  for (const field of schema.fields) {
-    if (!field.required) continue;
-
-    if (field.type === 'composite') {
-      const fieldset = document.getElementById('field-' + field.id);
-      if (fieldset && fieldset.style.display !== 'none') {
-        for (const sub of field.fields) {
-          if (sub.required && (!formData[sub.id] || formData[sub.id].length === 0)) missing.push(sub.label);
-        }
-      }
-    } else {
-      if (!formData[field.id] || formData[field.id].length === 0) missing.push(field.label);
-    }
-  }
-
-  btn.disabled = missing.length > 0;
-  if (missing.length > 0) {
-    hint.style.display = "block";
-    hint.innerHTML = "Заполните: " + missing.join(", ");
-  } else {
-    hint.style.display = "none";
-    hint.textContent = "";
-  }
 }
 
 function l3GoBack() {
@@ -516,11 +454,12 @@ function l3GoBack() {
   document.getElementById("l3-clarify-block").style.display = "none";
   document.getElementById("l3-clarify-text").textContent = "";
   renderQueue();
-  showScreen("screen-queue-l3");
+  const lvl = DataStore.getLevel(state.level);
+  if (lvl && lvl.queueScreen) showScreen(lvl.queueScreen);
 }
 
 function openL3Work(id) {
-  const t = DataStore.getTicket(3, id);
+  const t = getTicket(id);
   if (!t) return;
   state.currentId = id;
   state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
@@ -541,7 +480,7 @@ function openL3Work(id) {
   const dupSel = document.getElementById("l3-dup-of");
   dupSel.innerHTML = "";
   if (t.duplicateOf) {
-    const prev = DataStore.getTicket(3, t.duplicateOf);
+    const prev = DataStore.getTicket(state.level, t.duplicateOf);
     const opt = document.createElement("option");
     opt.value = t.duplicateOf;
     opt.textContent = prev ? (prev.id + " • " + prev.title) : t.duplicateOf;
@@ -549,8 +488,12 @@ function openL3Work(id) {
   }
 
   // --- ДИНАМИЧЕСКИЙ РЕНДЕРИНГ ФОРМЫ ---
-  const schema = DataStore.getSchema(3);
-  FormRenderer.render("l3-dynamic-form", schema, { ticket: t });
+  const schema = DataStore.getSchema(state.level);
+  FormRenderer.render("l3-dynamic-form", schema, {
+    ticket: t,
+    btnId: "btn-l3-submit",
+    hintId: "l3-submit-hint"
+  });
   FormRenderer.renderTabs('l3-diag-tabs', schema, { ticket: t });
   FormRenderer.bindActions(schema, { ticket: t });
 
@@ -561,20 +504,22 @@ function openL3Work(id) {
   document.getElementById("l3-ro-sla").textContent = m ? (m.react + " / " + m.sol) : "-";
 
   showScreen("screen-work-l3");
-  l3Validate();
+
+  // Принудительный запуск валидации после рендера
+  FormRenderer.validate("l3-dynamic-form", schema, "btn-l3-submit", "l3-submit-hint");
 }
 
 function l3Submit() {
-  const t = DataStore.getTicket(3, state.currentId);
+  const t = getTicket(state.currentId);
   if (!t) return;
 
-  const schema = DataStore.getSchema(3);
+  const schema = DataStore.getSchema(state.level);
   const formData = FormRenderer.getFormData("l3-dynamic-form", schema);
 
   formData.dupVal = document.getElementById("l3-dup-of").value;
 
   const result = Validator.validate(schema, t, formData);
-  state.getResults(3)[t.id] = result;
+  state.getResults(state.level)[t.id] = result;
 
   if (formData.outcome === "new_problem" && result.ok) {
     if (!state.createdProblems.includes(t.problem?.record)) {
@@ -584,7 +529,7 @@ function l3Submit() {
 
   document.getElementById("reg-ok-id").textContent = t.id;
   showModal("modal-reg");
-  ProgressStore.save(3, makeSnapshot());
+  ProgressStore.save(state.level, makeSnapshot());
 }
 
 function openProblems() {
@@ -799,7 +744,7 @@ function renderLevelCards() {
   const wrap = document.getElementById("level-cards");
   wrap.innerHTML = "";
   for (const lvl of DataStore.getLevels()) {
-    if (!lvl.queueScreen) continue;  // skip stub levels (e.g., L4 with no UI)
+    if (!lvl.queueScreen) continue;
     const total = DataStore.getTickets(lvl.id).length;
     const s = summary["level" + lvl.id];
     const done = s ? s.done : 0;

@@ -31,6 +31,18 @@
 Смоук-тест покрывает L1, L2, L3 и L4-stub.
 
 ## 🔥 Высокий приоритет (Next Refactoring)
+□ **Commit D.5: Universal UI Unification (Critical)**.
+Сейчас L1/L2 используют `screen-work` и `dynamic-form-container`, а L3/L4 
+используют `screen-work-l3` и `l3-dynamic-form`. Это технический долг.
+План:
+  1. Объединить экраны в один `screen-work` с универсальными якорями: 
+     `work-form`, `work-submit`, `work-hint`, `work-extra`.
+  2. Научить `FormRenderer` рендерить кастомные типы полей: 
+     `"type": "versions"` (для L1/L2) и `"type": "sla-calc"` (для L1/L2).
+  3. Удалить `openL3Work` из `app.js`. Оставить одну `openWork` для всех.
+  4. Обновить `data/levels/*.json` (все уровни указывают на `screen-work`).
+  5. Обновить `tests/smoke-test-dom.js` (убрать хардкод `l3-dynamic-form`).
+
 
 □ Commit E: Вынос HTML из `app.js`.
 Создать `js/core/templateRenderer.js`, перенести огромные HTML-строки из `app.js` (результаты, проблемы) в теги `<template>` в `index.html`.

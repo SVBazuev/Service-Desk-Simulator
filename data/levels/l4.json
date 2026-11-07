@@ -1,8 +1,16 @@
 {
     "id": 4,
-    "title": "Уровень 4 (stub)",
-    "desc": "Заглушка для проверки манифестов.",
+    "title": "Уровень 4 — Problem Manager",
+    "desc": "Расследование корневых причин и управление Problem Records.",
     "tickets": "data/tickets/l4.json",
     "schema": "data/schemas/card-l4.json",
-    "workflow": "l4"
+    "workflow": "l3",
+    "queueScreen": "screen-queue-l3",
+    "queueList": "queue-list-l3",
+    "queueDone": "q-done-l3",
+    "queueTotal": "q-total-l3",
+    "queueFinish": "btn-finish-l3",
+    "introModal": "modal-l3-intro",
+    "workScreen": "screen-work-l3",
+    "workTitle": "Рабочее место Problem Manager"
 }
