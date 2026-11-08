@@ -1,4 +1,5 @@
 {
+    "template": "dispatcher",
     "fields": [
         { "id": "org", "label": "Организация", "type": "select", "required": true, "source": "ORGS", "validate": { "rule": "eq", "path": "orgId" } },
         { "id": "cont", "label": "Контактное лицо", "type": "select", "required": true, "source": "CONTACTS_BY_ORG", "validate": { "rule": "eq", "path": "contactId" } },

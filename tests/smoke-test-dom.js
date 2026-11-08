@@ -17,6 +17,7 @@ const jsFiles = [
   "js/core/validator.js",
   "js/core/progressStore.js",
   "js/utils.js",
+  "js/core/templateRenderer.js",
   "js/app.js",
   "js/autotests.js"
 ];
@@ -108,9 +109,9 @@ async function runTest() {
 
     doc.getElementById("btn-to-level-select").click();
     doc.querySelector('[data-level="3"]').click();
-    ev("hideModal('modal-l3-intro')");
+    ev("hideModal('modal-engineer-intro')");
 
-    if (!doc.getElementById("screen-queue-l3").classList.contains("active")) {
+    if (!doc.getElementById("screen-queue-engineer").classList.contains("active")) {
       err("не открыт экран очереди L3");
     }
 
@@ -119,7 +120,7 @@ async function runTest() {
     // Прогон всех тикетов L3
     for (const t of tickets) {
       ev(`openWork('${t.id}')`);
-      ev("l3RequestClarify()");
+      ev("requestEngineerClarify()");
 
       applyFields({
         root: "причина: " + t.rootKeywords.join(", "),
@@ -146,10 +147,10 @@ async function runTest() {
       if (t.duplicateOf) setDup(t.duplicateOf);
 
       ev("validateCurrentForm()");
-      ev("l3Submit()");
+      ev("submitEngineer()");
       ev("hideModal('modal-reg')");
 
-      const res = ev(`state.resultsL3['${t.id}']`);
+      const res = ev(`state.resultsEngineer['${t.id}']`);
       if (!res) {
         err(t.id + ": результат не сохранён");
       } else if (!res.ok) {
@@ -162,13 +163,13 @@ async function runTest() {
 
     // Счётчик
     ev("renderQueue()");
-    const done = doc.getElementById("q-done-l3").textContent;
+    const done = doc.getElementById("q-done-engineer").textContent;
     if (done !== String(tickets.length)) {
       err(`счётчик очереди: ${done} вместо ${tickets.length}`);
     }
 
     // Итоги
-    doc.getElementById("btn-finish-l3").click();
+    doc.getElementById("btn-finish-engineer").click();
     if (!doc.getElementById("screen-res").classList.contains("active")) {
       err("не открыт экран результатов");
     }
@@ -197,16 +198,16 @@ async function runTest() {
       outcome: "new_problem"
     });
     ev("validateCurrentForm()");
-    ev("l3Submit()");
+    ev("submitEngineer()");
     ev("hideModal('modal-reg')");
 
-    const res2 = ev(`state.resultsL3['TK-302']`);
+    const res2 = ev(`state.resultsEngineer['TK-302']`);
     if (!res2 || res2.errs.length < 2) {
       err(`негативный тест: сломанный ответ не пойман (errs=${res2 ? res2.errs.length : 0})`);
     }
 
     // Встроенные автотесты L3
-    ev("runAutotestsL3()");
+    ev("runAutotestsEngineer()");
     ev("hideModal('modal-autotest')");
     const atOk = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
     const atBad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;

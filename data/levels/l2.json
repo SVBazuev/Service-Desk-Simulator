@@ -4,13 +4,17 @@
     "desc": "Назначение ответственных, эскалации.",
     "tickets": "data/tickets/l2.json",
     "schema": "data/schemas/card-l2.json",
-    "workflow": "l2",
-    "queueScreen": "screen-queue-l2",
-    "queueList": "queue-list-l2",
-    "queueDone": "q-done-l2",
-    "queueTotal": "q-total-l2",
-    "queueFinish": "btn-finish-l2",
-    "introModal": "modal-l2-intro",
-    "workScreen": "screen-work",
+    "workflow": "dispatcher",
+    "queue": {
+        "screen": "screen-queue-l2",
+        "list": "queue-list-l2",
+        "done": "q-done-l2",
+        "total": "q-total-l2",
+        "finish": "btn-finish-l2"
+    },
+    "intro": {
+        "modal": "modal-l2-intro",
+        "startBtn": "btn-start-l2-work"
+    },
     "workTitle": "Распределение задач (Тимлид)"
 }

@@ -1,110 +1,185 @@
-# TODO / Roadmap проекта Service Desk Simulator
+# TODO / Roadmap
 
-Этот файл содержит список идей и задач для дальнейшего развития симулятора.
+Проект содержит **основное приложение** (Service Desk Simulator) и
+**data-driven core** (schema-driven form/workflow runtime), на котором
+оно работает.
 
-## ✅ Сделано (Done)
+Core пока в разработке и не выделен в отдельный репозиторий; приложение
+и core живут в одном репозитории с общей сборкой и общими тестами.
 
-☑ ## Архитектура (A, B, C, D, D.5)
+Пункты ниже помечены `[Core]`, `[App]` или общие (без
+префикса).
 
-- Валидация вынесена в JSON-схемы (`field.validate.rule`, Commit A).
-- Рендерер поддерживает `composite`, `checkboxGroup`, `showIf` (Commit B).
-- Контракт `options` унифицирован, добавлена build-time валидация (Commit B.5).
-- Диагностика L3 вынесена в JSON (Commit C, *временно заменено на TemplateRenderer в D.5*).
-- Внедрены манифесты уровней (Commit D). Добавлен L4-stub.
-- **Commit D.5: Component Registry & Dynamic Anchors.** Удалены хардкодные ID для полей (`card-org` и т.д.). Внедрен `state.currentForm` (Registry). Смоук-тесты переведены на работу через Registry.
+---
 
-☑ ## Технический долг и багфиксы
+## ✅ Сделано
 
-Обработчик `#btn-start-l3-work` — кнопка «Приступить к работе» на L3-интро теперь закрывает модалку.
+### Core
 
-`runAutotestsL2` — исправлены id полей, убран несуществующий `fillAssigneeSelect() `.
+- **[Core]** Валидация в JSON-схемах (`field.validate.rule`,
+  Commit A).
+- **[Core]** Рендерер поддерживает `composite`,
+  `checkboxGroup`, `showIf` (Commit B).
+- **[Core]** Контракт `options` унифицирован, build-time
+  валидация (Commit B.5).
+- **[Core]** Манифесты уровней; `app.js` и `dataStore.js`
+  без хардкода `if (level === N)` (Commit D).
+- **[Core] Commit D.5 — Component Registry & Dynamic Anchors.**
+  Поля рендерятся на лету; доступ через `state.currentForm`.
+- **[Core] Commit D.6 — Naming & Contract Prep.**
+  `workflow: "l1"/"l2"/"l3"` →
+  `"registrar"/"dispatcher"/"engineer"`;
+  `state.l3` → `state.engineer`; `queue` /
+  `intro` в манифестах; `"template"` объявлен в схемах
+  (рантайм читает — в Commit E). DOM-anchor'ы `-l3` →
+  `-engineer`.
 
-`FormRenderer.render` — слушатели `change`/`input` вешаются на контейнер один раз (guard через `dataset.frbBound`).
+### Приложение Service Desk Simulator
 
-`showResults` — экран результатов показывается до записи в `ProgressStore`.
+- **[App]** Четыре уровня: L1 registrar, L2 dispatcher, L3 engineer,
+  L4 problem manager.
+- **[App]** Набор справочников, тикетов, базы знаний.
+- **[App]** Встроенные автотесты: позитивные + негативные сценарии
+  для L1/L2/L3.
 
-`fillSelect` больше не принимает строки (только объекты `{value,label}`).
+### Общее
 
-Смоук-тест покрывает L1, L2, L3 и L4-stub.
+- Смоук-тест покрывает L1, L2, L3 и L4 manifest.
+- `FormRenderer.render` вешает слушатели
+  `change`/`input` один раз (guard через
+  `dataset.frbBound`).
+- `fillSelect` принимает только объекты `{value, label}`.
+- `renderLevelCards` больше не проверяет устаревший
+  `lvl.queueScreen`.
 
-## 🔥 Высокий приоритет (Next Refactoring)
+---
 
-□ **Commit D.6: Naming & Contract Prep (Fast)**
-  - Переименовать `workflow: "l3"` -> `"engineer"` (в `l3.json` и `l4.json`).
-  - Переименовать `state.l3` -> `state.engineer`, `state.resultsL3` -> `state.resultsEngineer`.
-  - Переименовать `l3Submit` -> `submitEngineer`, `l3RequestClarify` -> `requestEngineerClarify`.
-  - Добавить `"template": "registrar" | "dispatcher" | "engineer"` в JSON-схемы (пока игнорируется рантаймом).
-  - Добавить объект `queue` и `intro` в манифесты уровней (замена статичным ID).
+## 🔥 Высокий приоритет (Next)
 
-□ **Commit E: Schema-Driven UI (TemplateRenderer)**
-  - Создать `js/core/templateRenderer.js`.
-  - Перенести рендеринг панелей (Diagnostics, Readonly, Form) из `app.js` в шаблоны.
-  - Сократить `index.html` (убрать дубли `screen-work-l3`, статичные секции очередей заменить на `data-template` / `data-queue`).
-  - `openWork` в `app.js` сокращается до вызова `TemplateRenderer.render()`.
+### Core
 
-□ **Commit F: Унификация очередей (QueueRenderer)**
-  - Одна секция `#screen-queue` в HTML вместо `screen-queue`, `screen-queue-l2`, `screen-queue-l3`.
-  - Ярлыки ("Зарегистрировано", "Решено") берутся из `level.queue.doneLabel`.
-  - Удаление `queueScreen`, `queueList` из манифестов.
+☑ **Commit E: Schema-Driven UI (TemplateRenderer) — Done**
+  - `js/core/templateRenderer.js` создан. Декларативные шаблоны
+    `registrar`, `dispatcher`, `engineer`:
+    `{ panels: [{ kind, title?, readonly?, after?, submitLabel? }] }`.
+  - Виджеты переехали в `TemplateRenderer._widgets`:
+    `versions`, `prio-hint`, `auto-calc`.
+    Readonly-блоки — `TemplateRenderer._readonly`.
+    Incoming и Diagnostics — `_renderIncomingPanel` /
+    `_renderDiagnosticsPanel`.
+  - `openWork` сокращён до: шапка → `TemplateRenderer.render`
+    → монтирование панелей в `[data-slot="work-grid"]` →
+    populate/prefill → validate.
+  - Из `app.js` удалены `renderIncoming`,
+    `renderDiagnostics`, `buildReadonlyBlock`,
+    `buildVersionsWidget`, `buildPriorityHint`,
+    `buildAutoCalcBlock`.
+  - `escapeHtml` переехал в `js/utils.js` (общий для
+    `showResults` и `autotests.js`).
+  - Кнопки submit/cancel рендерит `TemplateRenderer`; `init()`
+    их больше не подключает, ловятся через делегирование по
+    `data-action="submit" | "cancel"`.
+  - `handleFieldChange` читает `registry` из
+    `state.currentForm` и использует `registry.container`
+    вместо устаревшего `q('[data-slot="form-body"]')`.
+  - `index.html`: `screen-work` сокращён до topbar + пустой
+    `[data-slot="work-grid"]`. `<script templateRenderer.js>`
+    добавлен **после** `utils.js`, **до** `app.js` (обязательный
+    порядок: TemplateRenderer зависит от `utils`).
+  - `tests/smoke-test-dom.js`: добавлен
+    `js/core/templateRenderer.js` в `jsFiles` (тот же
+    порядок).
+  - Rename правила: `l3_logic` → `problem_logic`
+    (`card-l3.json`, `card-l4.json`, `validator.js`,
+    `data-bundle.js`). Тело правила не менялось.
+  - `npm test`: L1 22 / L2 16 / L3 12 / L4 manifest — PASS.
+  - **Отложено (не блокирует):** три комментария
+    `// для L3` в `validator.js` остались не
+    переименованными — косметический follow-up.
 
-## ⚙️ Технический долг и архитектура (Остальное)
-- Commit G: Миграция на ES-модули.
-- Commit H: Рефакторинг `autotests.js` (убрать ручную сборку HTML).
-- CI/CD (GitHub Actions) + ESLint.
+☐ **Commit F: Collapse physical queues (Next)**
+  - ☐ Убрать `queue.screen/list/done/total/finish` из
+    манифестов — оставить только строки `title`,
+    `doneLabel`, `finishLabel`, `showProblems`.
+  - ☐ Одна `<section id="screen-queue" data-queue-for>` в
+    `index.html`.
+  - ☐ `renderQueue` через `data-queue-*` атрибуты.
+  - ☐ Intro-модалка коллапсируется в `<div data-intro-for>`;
+    `intro.modal` / `intro.startBtn` уходят из
+    манифестов, вместо них `intro.title` / `intro.body`
+    (HTML).
 
-? Восстановить декларативные tabs/actions в card-l3.json.
-   В D.5 они временно заменены на hardcoded renderIncoming /
-   renderDiagnostics в app.js. Вернуть data-driven подход с
-   data-slot-lookup вместо getElementById (совместно с TemplateRenderer). **!?**
+### App
 
-? Commit G: Миграция на ES-модули.
-Избавиться от глобальных `var` и `window.*`. Перейти на `import/export`.
-Требует внедрения сборщика (Vite или Webpack) и переписывания `smoke-test-dom.js` (отказ от `vm.runInContext` в пользу стандартных `import`).
+- ☐ После E и F — переоценить: что ещё можно вынести в JSON. Пока
+  приложение в основном **готово**.
 
-? Commit H: Рефакторинг `autotests.js`.
-Убрать ручную сборку HTML и прямые манипуляции с DOM. Перевести генерацию отчетов автотестов на использование `FormRenderer`, `Validator` и `TemplateRenderer`.
+---
 
-? Null-guard'ы в динамически рендерящихся обработчиках.
-В `FormRenderer` и `runAutotests*` при работе с `getElementById(…)` без проверки на `null`. Ввести привычку: `const el = getElementById(...); if (!el) return;`.
+## ⚙️ Технический долг и архитектура
 
-? CI/CD (GitHub Actions).
-Настроить автоматический запуск `npm run build` и `npm test` при каждом пуше в `main` и `develop`. Смоук-тест теперь покрывает все уровни, поэтому ценность CI высокая.
+### Core
 
-? Строгий линтинг.
-Подключить ESLint и Prettier для поддержания единого стиля кода.
+- ☐ **Commit G — ESM + extension points.**
+  Тот коммит, где core перестаёт быть монолитом и становится
+  **точками расширения** для приложений.
+  - ☐ Миграция на ES-модули (`import`/`export`),
+    прощание с `var` и `window.*`.
+  - ☐ `registerWorkflow(name, template)` — API для регистрации
+    шаблонов.
+  - ☐ `registerValidator(name, fn)` — для правил валидации.
+  - ☐ `use(middleware)` — middleware на `submit`.
+  - ☐ `setProgressStore({ load, save, reset, getSummary })`.
+  - ☐ Переписать `smoke-test-dom.js` без
+    `vm.runInContext`.
+  - ☐ Разбить `app.js`: бизнес-логика переезжает в
+    `service-desk/app/*.js`, core остаётся в `js/core/`.
 
-? Сценарии (Scenario Packs).
-Возможность загружать разные наборы задач (например, «Онбординг новичка», «Продвинутый уровень: Интеграции») через выбор манифеста.
+- ☐ **Null-guard'ы.** В `FormRenderer` и `runAutotests*`
+  при работе с `getElementById(…)` без проверки на `null`.
+  Ввести привычку: `const el = document.getElementById(...);
+  if (!el) return;`.
 
-## 🎨 UI/UX Улучшения
+- ☐ **Линтинг.** ESLint + Prettier.
 
-□ Визуальная валидация полей.
-Подсвечивать красным поля, которые не заполнены или заполнены неверно (сейчас просто блокируется кнопка).
+- ☐ **Восстановить декларативные tabs/actions** в `card-l3.json`.
+  В D.5 они временно заменены на hardcoded `renderIncoming` /
+  `renderDiagnostics`; вернуть data-driven подход через
+  `TemplateRenderer` (задача E).
 
-□ Улучшение экрана результатов.
-Добавить возможность фильтрации (показать только ошибки) и сворачивания блоков.
+### App
 
-□ Анимации.
-Добавить плавные переходы между экранами и модальными окнами.
+- ☐ **Commit H — рефакторинг `autotests.js`.**
+  Убрать ручную сборку HTML и прямые манипуляции с DOM. Использовать
+  `FormRenderer`, `Validator` и `TemplateRenderer`.
 
-□ Темная тема.
-Добавить переключатель светлой/темной темы интерфейса.
+### Общее
 
-## 📚 Контент и База знаний
+- ☐ **CI/CD (GitHub Actions).** `npm run build` +
+  `npm test` на push в `main` и `develop`.
+- ☐ **Scenario Packs.** Загрузка разных наборов задач через выбор
+  манифеста.
 
-□ Расширение Базы Знаний.
-Добавить статьи про SLA, эскалацию и работу с конфликтными клиентами.
+---
 
-□ Больше задач.
-Добавить больше карточек для L1 и L2, чтобы увеличить вариативность.
+## 🎨 UI/UX (App)
 
-□ Локализация (i18n).
-Подготовить возможность перевода интерфейса и задач на английский язык.
+- ☐ Визуальная валидация полей (подсветка незаполненных/неверных).
+- ☐ Фильтр и сворачивание блоков на экране результатов.
+- ☐ Анимации переходов между экранами и модалками.
+- ☐ Тёмная тема.
 
-## 🚀 Высокий приоритет (Features) / Backend
+## 📚 Контент (App)
 
-□ Мультиплеер (Backend).
-Добавление серверной части на Node.js (Express/Fastify) и WebSocket. Уровень 2 (Тимлид) должен иметь возможность назначать задачу реальному пользователю на Уровне 3 (Инженер).
+- ☐ Расширение Базы Знаний (SLA, эскалация, конфликтные клиенты).
+- ☐ Больше карточек для L1 и L2 (вариативность).
+- ☐ Локализация (i18n) — задачи + UI.
 
-□ Сохранение прогресса на сервере.
-Замена `localStorage` на API бэкенда для кросс-устройственной синхронизации.
+## 🚀 Features / Backend
+
+- ☐ **Мультиплеер (Backend).** Node.js (Express/Fastify) + WebSocket.
+  L2 (Тимлид) назначает задачу реальному пользователю на L3.
+  → Требует от core отдельный hook: `onSubmit(ticket, formData)`.
+- ☐ **Сохранение прогресса на сервере.** Замена `localStorage`
+  на API-бэкенд. → В терминах core — plug-in для
+  `ProgressStore`.

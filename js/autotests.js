@@ -237,14 +237,14 @@ function runAutotestsL2() {
 
 // ===== L3 =====
 
-function runAutotestsL3() {
+function runAutotestsEngineer() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
 
-  const backupResults = JSON.parse(JSON.stringify(state.resultsL3));
+  const backupResults = JSON.parse(JSON.stringify(state.resultsEngineer));
   const backupId = state.currentId;
   const backupLevel = state.level;
-  const backupL3 = { ...state.l3 };
+  const backupEngineer = { ...state.engineer };
   const backupCreated = (state.createdProblems || []).slice();
 
   const backupLevelState = state.level;
@@ -254,7 +254,7 @@ function runAutotestsL3() {
 
   for (const t of TICKETS_L3) {
     openWork(t.id);
-    l3RequestClarify();
+    requestEngineerClarify();
 
     // ТЕСТ 1: Правильно
     setField("root", "причина: " + t.rootKeywords.join(", "));
@@ -276,14 +276,14 @@ function runAutotestsL3() {
     }
 
     validateCurrentForm();
-    l3Submit();
+    submitEngineer();
     hideModal("modal-reg");
 
-    const res1 = state.resultsL3[t.id];
+    const res1 = state.resultsEngineer[t.id];
     const pass1 = res1 && res1.ok;
 
     // ТЕСТ 2: Ломаем
-    delete state.resultsL3[t.id];
+    delete state.resultsEngineer[t.id];
     openWork(t.id);
 
     setField("root", "неизвестно");
@@ -305,10 +305,10 @@ function runAutotestsL3() {
     }
 
     validateCurrentForm();
-    l3Submit();
+    submitEngineer();
     hideModal("modal-reg");
 
-    const res2 = state.resultsL3[t.id];
+    const res2 = state.resultsEngineer[t.id];
     const pass2 = res2 && res2.errs.length > 0;
 
     html += `<tr>
@@ -321,13 +321,13 @@ function runAutotestsL3() {
 
   reportBody.innerHTML = html;
 
-  state.resultsL3 = backupResults;
+  state.resultsEngineer = backupResults;
   state.currentId = backupId;
   state.level = backupLevelState;
-  state.l3 = backupL3;
+  state.engineer = backupEngineer;
   state.createdProblems = backupCreated;
 
   renderQueue();
-  showScreen("screen-queue-l3");
+  showScreen("screen-queue-engineer");
   showModal("modal-autotest");
 }

@@ -1,4 +1,5 @@
 {
+    "template": "engineer",
     "fields": [
         {
             "id": "root",
@@ -16,7 +17,7 @@
                 { "value": "resolved", "label": "Решено" },
                 { "value": "known_error", "label": "Known Error" }
             ],
-            "validate": { "rule": "l3_logic" }
+            "validate": { "rule": "problem_logic" }
         }
     ]
 }

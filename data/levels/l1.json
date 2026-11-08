@@ -4,13 +4,14 @@
     "desc": "Разбор входящих, заполнение карточки, приоритизация.",
     "tickets": "data/tickets/l1.json",
     "schema": "data/schemas/card-l1.json",
-    "workflow": "l1",
-    "queueScreen": "screen-queue",
-    "queueList": "queue-list",
-    "queueDone": "q-done",
-    "queueTotal": "q-total",
-    "queueFinish": "btn-finish",
-    "introModal": null,
-    "workScreen": "screen-work",
+    "workflow": "registrar",
+    "queue": {
+        "screen": "screen-queue",
+        "list": "queue-list",
+        "done": "q-done",
+        "total": "q-total",
+        "finish": "btn-finish"
+    },
+    "intro": null,
     "workTitle": "Рабочее место"
 }

@@ -8,7 +8,7 @@ var State = {
   resultsByLevel: {},  // { 1: {}, 2: {}, 3: {}, ... }
   orgVersions: [],
   createdProblems: [],
-  l3: { requestedClarify: false, clarified: false, diagOpen: null },
+  engineer: { requestedClarify: false, clarified: false, diagOpen: null },
 
   reset: function() {
     this.level = 1;
@@ -17,7 +17,7 @@ var State = {
     this.resultsByLevel = {};
     this.orgVersions = [];
     this.createdProblems = [];
-    this.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
+    this.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
   },
 
   getResults: function(level) {
@@ -30,6 +30,6 @@ var State = {
   set results(v)  { this.resultsByLevel[1] = v; },
   get resultsL2() { return this.getResults(2); },
   set resultsL2(v){ this.resultsByLevel[2] = v; },
-  get resultsL3() { return this.getResults(3); },
-  set resultsL3(v){ this.resultsByLevel[3] = v; }
+  get resultsEngineer() { return this.getResults(3); },
+  set resultsEngineer(v){ this.resultsByLevel[3] = v; }
 };

@@ -907,6 +907,7 @@ var TICKETS = [
 ];
 
 var SCHEMA_L1 = {
+  "template": "registrar",
   "fields": [
     {
       "id": "org",
@@ -1198,6 +1199,7 @@ var TICKETS_L2 = [
 ];
 
 var SCHEMA_L2 = {
+  "template": "dispatcher",
   "fields": [
     {
       "id": "org",
@@ -1751,6 +1753,7 @@ var TICKETS_L3 = [
 ];
 
 var SCHEMA_L3 = {
+  "template": "engineer",
   "fields": [
     {
       "id": "root",
@@ -1808,7 +1811,7 @@ var SCHEMA_L3 = {
         }
       ],
       "validate": {
-        "rule": "l3_logic"
+        "rule": "problem_logic"
       }
     },
     {
@@ -1954,6 +1957,7 @@ var TICKETS_L4 = [
 ];
 
 var SCHEMA_L4 = {
+  "template": "engineer",
   "fields": [
     {
       "id": "root",
@@ -1981,7 +1985,7 @@ var SCHEMA_L4 = {
         }
       ],
       "validate": {
-        "rule": "l3_logic"
+        "rule": "problem_logic"
       }
     }
   ]
@@ -1992,56 +1996,69 @@ var LEVELS = [
     "id": 1,
     "title": "Уровень 1 — Регистрация обращений",
     "desc": "Разбор входящих, заполнение карточки, приоритизация.",
-    "workflow": "l1",
-    "queueScreen": "screen-queue",
-    "queueList": "queue-list",
-    "queueDone": "q-done",
-    "queueTotal": "q-total",
-    "queueFinish": "btn-finish",
-    "introModal": null,
-    "workScreen": "screen-work",
+    "workflow": "registrar",
+    "queue": {
+      "screen": "screen-queue",
+      "list": "queue-list",
+      "done": "q-done",
+      "total": "q-total",
+      "finish": "btn-finish"
+    },
+    "intro": null,
     "workTitle": "Рабочее место"
   },
   {
     "id": 2,
     "title": "Уровень 2 — Распределение",
     "desc": "Назначение ответственных, эскалации.",
-    "workflow": "l2",
-    "queueScreen": "screen-queue-l2",
-    "queueList": "queue-list-l2",
-    "queueDone": "q-done-l2",
-    "queueTotal": "q-total-l2",
-    "queueFinish": "btn-finish-l2",
-    "introModal": "modal-l2-intro",
-    "workScreen": "screen-work",
+    "workflow": "dispatcher",
+    "queue": {
+      "screen": "screen-queue-l2",
+      "list": "queue-list-l2",
+      "done": "q-done-l2",
+      "total": "q-total-l2",
+      "finish": "btn-finish-l2"
+    },
+    "intro": {
+      "modal": "modal-l2-intro",
+      "startBtn": "btn-start-l2-work"
+    },
     "workTitle": "Распределение задач (Тимлид)"
   },
   {
     "id": 3,
     "title": "Уровень 3 — Решение инцидентов",
     "desc": "Диагностика, Known Error, Problem Management.",
-    "workflow": "l3",
-    "queueScreen": "screen-queue-l3",
-    "queueList": "queue-list-l3",
-    "queueDone": "q-done-l3",
-    "queueTotal": "q-total-l3",
-    "queueFinish": "btn-finish-l3",
-    "introModal": "modal-l3-intro",
-    "workScreen": "screen-work-l3",
+    "workflow": "engineer",
+    "queue": {
+      "screen": "screen-queue-engineer",
+      "list": "queue-list-engineer",
+      "done": "q-done-engineer",
+      "total": "q-total-engineer",
+      "finish": "btn-finish-engineer"
+    },
+    "intro": {
+      "modal": "modal-engineer-intro",
+      "startBtn": "btn-start-engineer-work"
+    },
     "workTitle": "Рабочее место инженера"
   },
   {
     "id": 4,
     "title": "Уровень 4 — Problem Manager",
     "desc": "Расследование корневых причин и управление Problem Records.",
-    "workflow": "l3",
-    "queueScreen": "screen-queue-l3",
-    "queueList": "queue-list-l3",
-    "queueDone": "q-done-l3",
-    "queueTotal": "q-total-l3",
-    "queueFinish": "btn-finish-l3",
-    "introModal": "modal-l3-intro",
-    "workScreen": "screen-work-l3",
+    "workflow": "engineer",
+    "queue": {
+      "screen": "screen-queue-engineer",
+      "list": "queue-list-engineer",
+      "done": "q-done-engineer",
+      "total": "q-total-engineer",
+      "finish": "btn-finish-engineer"
+    },
+    "intro": {
+      "modal": "modal-engineer-intro",
+      "startBtn": "btn-start-engineer-work"
+    },
     "workTitle": "Рабочее место Problem Manager"
   }
 ];
