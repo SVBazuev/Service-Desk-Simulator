@@ -4,13 +4,17 @@
     "desc": "Расследование корневых причин и управление Problem Records.",
     "tickets": "data/tickets/l4.json",
     "schema": "data/schemas/card-l4.json",
-    "workflow": "l3",
-    "queueScreen": "screen-queue-l3",
-    "queueList": "queue-list-l3",
-    "queueDone": "q-done-l3",
-    "queueTotal": "q-total-l3",
-    "queueFinish": "btn-finish-l3",
-    "introModal": "modal-l3-intro",
-    "workScreen": "screen-work-l3",
+    "workflow": "engineer",
+    "queue": {
+        "screen": "screen-queue-engineer",
+        "list": "queue-list-engineer",
+        "done": "q-done-engineer",
+        "total": "q-total-engineer",
+        "finish": "btn-finish-engineer"
+    },
+    "intro": {
+        "modal": "modal-engineer-intro",
+        "startBtn": "btn-start-engineer-work"
+    },
     "workTitle": "Рабочее место Problem Manager"
 }

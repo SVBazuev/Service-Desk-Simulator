@@ -52,13 +52,14 @@ function init() {
   document.getElementById("btn-work-cancel").addEventListener("click", goBackFromWork);
   document.getElementById("btn-back-queue").addEventListener("click", goBackFromWork);
 
-  document.getElementById("btn-start-l2-work").addEventListener("click", () => {
-    hideModal("modal-l2-intro");
-    showScreen("screen-queue-l2");
-  });
-  document.getElementById("btn-start-l3-work").addEventListener("click", () => {
-    hideModal("modal-l3-intro");
-    showScreen("screen-queue-l3");
+  DataStore.getLevels().forEach(lvl => {
+    if (!lvl.intro || !lvl.intro.startBtn) return;
+    const btn = document.getElementById(lvl.intro.startBtn);
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      hideModal(lvl.intro.modal);
+      showScreen(lvl.queue.screen);
+    });
   });
 
   // Делегирование кликов внутри рабочего экрана
@@ -73,7 +74,7 @@ function init() {
 
   document.querySelectorAll("[id^='btn-org-list']").forEach(b => b.addEventListener("click", openOrgList));
   document.querySelectorAll("[id^='btn-emp-list']").forEach(b => b.addEventListener("click", () =>
-    openEmpList(DataStore.getLevelWorkflow(state.level) === "l3" ? DataStore.getEmployeesL3() : DataStore.getEmployees())
+    openEmpList(DataStore.getLevelWorkflow(state.level) === "engineer" ? DataStore.getEmployeesL3() : DataStore.getEmployees())
   ));
   document.querySelectorAll("[id^='btn-kb']").forEach(b => b.addEventListener("click", openKb));
   document.querySelectorAll("[id^='btn-problems']").forEach(b => b.addEventListener("click", openProblems));
@@ -90,7 +91,7 @@ function init() {
   });
 
   DataStore.getLevels().forEach(lvl => {
-    const btn = lvl.queueFinish ? document.getElementById(lvl.queueFinish) : null;
+    const btn = (lvl.queue && lvl.queue.finish) ? document.getElementById(lvl.queue.finish) : null;
     if (btn) {
       btn.addEventListener("click", () => {
         if (state.level === lvl.id) showResults(state.level);
@@ -108,35 +109,35 @@ function onWorkClick(e) {
   if (!t) return;
   const action = t.dataset.action;
   if (action === 'clarify') requestClarification();
-  else if (action === 'clarify-l3') l3RequestClarify();
+  else if (action === 'clarify-engineer') requestEngineerClarify();
   else if (action === 'add-prod') addProductToCard();
   else if (action === 'diag-tab') switchDiagTab(t.dataset.tabId);
 }
 
 function handleSubmit() {
   const wf = DataStore.getLevelWorkflow(state.level);
-  if (wf === 'l3') l3Submit();
-  else if (wf === 'l2') assignL2();
+  if (wf === 'engineer') submitEngineer();
+  else if (wf === 'dispatcher') assignL2();
   else register();
 }
 
 function goBackFromWork() {
   state.currentId = null;
   state.currentForm = null;
-  if (DataStore.getLevelWorkflow(state.level) === 'l3') {
-    state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
+  if (DataStore.getLevelWorkflow(state.level) === 'engineer') {
+    state.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
   }
   renderQueue();
   const lvl = DataStore.getLevel(state.level);
-  if (lvl && lvl.queueScreen) showScreen(lvl.queueScreen);
+  if (lvl && lvl.queue) showScreen(lvl.queue.screen);
 }
 
 // ============ Очередь ============
 
 function renderQueue() {
   const lvl = DataStore.getLevel(state.level);
-  if (!lvl || !lvl.queueList) return;
-  const list = document.getElementById(lvl.queueList);
+  if (!lvl || !lvl.queue || !lvl.queue.list) return;
+  const list = document.getElementById(lvl.queue.list);
   if (!list) return;
   list.innerHTML = "";
 
@@ -145,12 +146,12 @@ function renderQueue() {
   const results = getResults();
   let done = 0;
 
-  const totalEl = document.getElementById(lvl.queueTotal);
+  const totalEl = document.getElementById(lvl.queue.total);
   if (totalEl) totalEl.textContent = tickets.length;
 
-  const isL1 = workflow === "l1";
-  const badgeDone = isL1 ? "Зарегистрировано" : workflow === "l2" ? "Распределено" : "Решено";
-  const iconSvg = isL1
+  const isRegistrar = workflow === "registrar";
+  const badgeDone = isRegistrar ? "Зарегистрировано" : workflow === "dispatcher" ? "Распределено" : "Решено";
+  const iconSvg = isRegistrar
     ? '<path d="M3 7h5l2 2h11v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor"/>'
     : '<path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" stroke="currentColor"/>';
 
@@ -161,10 +162,10 @@ function renderQueue() {
     item.className = "queue-item" + (reg ? " done" : "");
 
     let title = t.title;
-    if (workflow === "l1") {
+    if (workflow === "registrar") {
       const org = getOrg(t.orgId);
       title = `Обращение от ${org ? org.name : ""} (${t.channel})`;
-    } else if (workflow === "l3") {
+    } else if (workflow === "engineer") {
       const org = getOrg(t.orgId);
       title = `${org ? org.name : ""} - ${t.title}`;
     }
@@ -180,9 +181,9 @@ function renderQueue() {
     list.appendChild(item);
   }
 
-  const doneEl = document.getElementById(lvl.queueDone);
+  const doneEl = document.getElementById(lvl.queue.done);
   if (doneEl) doneEl.textContent = done.toString();
-  const finishBtn = document.getElementById(lvl.queueFinish);
+  const finishBtn = document.getElementById(lvl.queue.finish);
   if (finishBtn) finishBtn.disabled = done < tickets.length;
 }
 
@@ -197,15 +198,15 @@ function openWork(id) {
   const workflow = lvl.workflow;
   const schema = DataStore.getSchema(state.level);
 
-  if (workflow === "l3") {
-    state.l3 = { requestedClarify: false, clarified: false, diagOpen: null };
+  if (workflow === "engineer") {
+    state.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
   }
 
   // Шапка
   q('[data-slot="work-title"]').textContent = lvl.workTitle || "Рабочее место";
   q('[data-slot="work-num"]').textContent = t.id;
   const probBtn = document.getElementById("btn-problems-work");
-  if (probBtn) probBtn.style.display = (workflow === "l3") ? "" : "none";
+  if (probBtn) probBtn.style.display = (workflow === "engineer") ? "" : "none";
 
   // Входящее
   renderIncoming(t, workflow);
@@ -213,7 +214,7 @@ function openWork(id) {
   // Extra panel (диагностика L3/L4)
   const extraPanel = q('[data-slot="extra-panel"]');
   const workGrid = q('[data-slot="work-grid"]');
-  if (workflow === "l3" && Array.isArray(t.diagnostics) && t.diagnostics.length > 0) {
+  if (workflow === "engineer" && Array.isArray(t.diagnostics) && t.diagnostics.length > 0) {
     extraPanel.style.display = "";
     q('[data-slot="extra-title"]').textContent = "Диагностика";
     renderDiagnostics(t);
@@ -234,9 +235,9 @@ function openWork(id) {
   dynamicForm.className = "form-grid";
   formBody.appendChild(dynamicForm);
 
-  if (workflow !== "l3") formBody.appendChild(buildVersionsWidget());
-  if (workflow === "l1") formBody.appendChild(buildPriorityHint());
-  if (workflow !== "l3") formBody.appendChild(buildAutoCalcBlock());
+  if (workflow !== "engineer") formBody.appendChild(buildVersionsWidget());
+  if (workflow === "registrar") formBody.appendChild(buildPriorityHint());
+  if (workflow !== "engineer") formBody.appendChild(buildAutoCalcBlock());
 
   const hintEl = document.createElement("div");
   hintEl.className = "prio-hint";
@@ -245,8 +246,8 @@ function openWork(id) {
 
   const submitBtn = document.getElementById("btn-work-submit");
   submitBtn.textContent =
-    workflow === "l3" ? "Закрыть обращение"
-    : workflow === "l2" ? "Изменить ответственного"
+    workflow === "engineer" ? "Закрыть обращение"
+    : workflow === "dispatcher" ? "Изменить ответственного"
     : "Зарегистрировать";
 
   // Рендер формы
@@ -263,18 +264,18 @@ function openWork(id) {
   populateSelects(registry, t, workflow);
 
   // Предзаполнение значений: L1/L2 — title/desc; L2 — каскад.
-  if (workflow === "l1" || workflow === "l2") {
+  if (workflow === "registrar" || workflow === "dispatcher") {
     if (registry.fields.title) registry.fields.title.value = t.title;
     if (registry.fields.desc) registry.fields.desc.value = t.text;
   }
-  if (workflow === "l2") {
-    prefillL2(registry, t);
+  if (workflow === "dispatcher") {
+    prefillDispatcher(registry, t);
     updateAutoCalc(registry);
   }
 
   // Версии (L1/L2)
-  if (workflow !== "l3") {
-    if (workflow === "l2") {
+  if (workflow !== "engineer") {
+    if (workflow === "dispatcher") {
       const org = getOrg(t.orgId);
       state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
     } else {
@@ -310,7 +311,7 @@ function renderIncoming(t, workflow) {
     <div class="kv-row"><span class="kv-key">Организация</span><span class="kv-val">${org ? org.name : ""}</span></div>
     <div class="kv-row"><span class="kv-key">Контакт</span><span class="kv-val">${c ? c.name + ", " + c.title : ""}</span></div>
     <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val">${t.channel}</span></div>
-    ${workflow === "l3" ? `<div class="kv-row"><span class="kv-key">Тип / Приоритет</span><span class="kv-val">${t.type} • ${m ? m.prio : "-"}</span></div>` : ""}
+    ${workflow === "engineer" ? `<div class="kv-row"><span class="kv-key">Тип / Приоритет</span><span class="kv-val">${t.type} • ${m ? m.prio : "-"}</span></div>` : ""}
     <div class="kv-row"><span class="kv-key">Заголовок</span><span class="kv-val">${t.title}</span></div>
   `;
   body.appendChild(kv);
@@ -322,7 +323,7 @@ function renderIncoming(t, workflow) {
   body.appendChild(textBlock);
 
   // Дубликат (L3)
-  if (workflow === "l3" && t.duplicateOf) {
+  if (workflow === "engineer" && t.duplicateOf) {
     const dupBlock = document.createElement("div");
     dupBlock.dataset.slot = "dup-block";
     dupBlock.style.cssText = "background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; font-size:13px;";
@@ -345,16 +346,16 @@ function renderIncoming(t, workflow) {
   }
 
   // Кнопка уточнения
-  const hasClarify = workflow === "l3"
+  const hasClarify = workflow === "engineer"
     ? (Array.isArray(t.clarifications) && t.clarifications.length > 0)
     : !!t.clarification;
 
   if (hasClarify) {
     const clarifyBtn = document.createElement("button");
-    clarifyBtn.dataset.action = workflow === "l3" ? "clarify-l3" : "clarify";
+    clarifyBtn.dataset.action = workflow === "engineer" ? "clarify-engineer" : "clarify";
     clarifyBtn.className = "btn primary";
     clarifyBtn.style.cssText = "width:100%; border:1px dashed #93c5fd; background:#eff6ff; color:#1e40af; margin-top:10px;";
-    clarifyBtn.textContent = workflow === "l3"
+    clarifyBtn.textContent = workflow === "engineer"
       ? "Запросить уточняющую информацию у заказчика"
       : "Написать заказчику и уточнить детали";
     body.appendChild(clarifyBtn);
@@ -433,7 +434,7 @@ function buildReadonlyBlock(t, workflow) {
   grid.style.marginBottom = "12px";
   const m = calcPriority(t.imp, t.urg);
 
-  if (workflow === "l3") {
+  if (workflow === "engineer") {
     grid.innerHTML = `
       <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val">${t.id}</span></div>
       <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val">${t.ver}</span></div>
@@ -442,7 +443,7 @@ function buildReadonlyBlock(t, workflow) {
   } else {
     grid.innerHTML = `
       <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${t.id}</span></div>
-      <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">${workflow === "l2" ? "Тимлид команды Бета" : "текущий регистратор"}</span></div>
+      <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">${workflow === "dispatcher" ? "Тимлид команды Бета" : "текущий регистратор"}</span></div>
       <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
       <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
   }
@@ -497,12 +498,12 @@ function populateSelects(registry, t, workflow) {
   if (f.org) fillSelect(f.org, DataStore.getOrgs().map(o => ({ value: o.id, label: o.name })));
 
   if (f.cont) {
-    const oid = workflow === "l2" ? t.orgId : "";
+    const oid = workflow === "dispatcher" ? t.orgId : "";
     fillSelect(f.cont, oid ? getContactsByOrg(oid).map(c => ({ value: c.id, label: c.name })) : []);
   }
 
   if (f.prod) {
-    const org = workflow === "l2" ? getOrg(t.orgId) : null;
+    const org = workflow === "dispatcher" ? getOrg(t.orgId) : null;
     fillSelect(f.prod, org ? org.products.map(p => ({ value: p.name, label: p.name })) : []);
   }
 
@@ -522,7 +523,7 @@ function populateSelects(registry, t, workflow) {
   if (f.linkedProb) fillSelect(f.linkedProb, [{ value: "", label: "Выберите проблему..." }]);
 }
 
-function prefillL2(registry, t) {
+function prefillDispatcher(registry, t) {
   const f = registry.fields;
 
   if (f.org) f.org.value = t.orgId;
@@ -587,7 +588,7 @@ function handleFieldChange(fieldId, value, t, workflow, registry) {
     fillSelect(f.sub, getSubList(f.prod.value, value).map(s => ({ value: s, label: s })));
   }
 
-  if (fieldId === "type" && workflow === "l1" && f.imp && f.urg) {
+  if (fieldId === "type" && workflow === "registrar" && f.imp && f.urg) {
     const hint = q('[data-slot="prio-hint"]');
     if (value === "Запрос на обслуживание" || value === "Консультация") {
       if (hint) hint.style.display = "block";
@@ -640,7 +641,7 @@ function validateCurrentForm() {
   const schema = DataStore.getSchema(state.level);
   const wf = DataStore.getLevelWorkflow(state.level);
   FormRenderer.validate(state.currentForm, schema, () => {
-    if (wf === "l3") return true;
+    if (wf === "engineer") return true;
     return state.orgVersions && state.orgVersions.length > 0;
   });
 }
@@ -658,16 +659,16 @@ function requestClarification() {
   if (btn) btn.style.display = "none";
 }
 
-function l3RequestClarify() {
+function requestEngineerClarify() {
   const t = getTicket(state.currentId);
   if (!t || !t.clarifications || t.clarifications.length === 0) return;
-  state.l3.requestedClarify = true;
-  state.l3.clarified = true;
+  state.engineer.requestedClarify = true;
+  state.engineer.clarified = true;
   const text = q('[data-slot="clarify-text"]');
   const block = q('[data-slot="clarify-block"]');
   if (text) text.textContent = t.clarifications[0].answer;
   if (block) block.style.display = "block";
-  const btn = q('[data-action="clarify-l3"]');
+  const btn = q('[data-action="clarify-engineer"]');
   if (btn) btn.style.display = "none";
 }
 
@@ -765,7 +766,7 @@ function assignL2() {
   if (emp && emp.workload !== undefined) emp.workload += 1;
 }
 
-function l3Submit() {
+function submitEngineer() {
   const t = getTicket(state.currentId);
   if (!t || !state.currentForm) return;
   const schema = DataStore.getSchema(state.level);
@@ -800,7 +801,7 @@ function showResults(level) {
     const tr = document.createElement("tr");
 
     let formHtml = "";
-    if (workflow === "l1") {
+    if (workflow === "registrar") {
       const orgObj = getOrg(t.orgId);
       const contactObj = CONTACTS.find(c => c.id === t.contactId);
       formHtml = `<div style="font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;">
@@ -813,7 +814,7 @@ function showResults(level) {
           <div class="text-block-title" style="font-size:12px;padding:6px 10px;">Текст</div>
           <div class="text-block-content" style="font-size:12px;padding:10px;white-space:pre-wrap;">${escapeHtml(t.text)}</div>
         </div></div>`;
-    } else if (workflow === "l3") {
+    } else if (workflow === "engineer") {
       const orgObj = getOrg(t.orgId);
       const contactObj = CONTACTS.find(c => c.id === t.contactId);
       formHtml = `<div style="font-size:12px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px;">
@@ -1039,7 +1040,7 @@ function makeSnapshot() {
     results: state.getResults(level),
     total: DataStore.getTickets(level).length
   };
-  if (DataStore.getLevelWorkflow(level) === "l3") {
+  if (DataStore.getLevelWorkflow(level) === "engineer") {
     snap.createdProblems = state.createdProblems;
   }
   return snap;
@@ -1057,7 +1058,7 @@ function renderLevelCards() {
   const wrap = document.getElementById("level-cards");
   wrap.innerHTML = "";
   for (const lvl of DataStore.getLevels()) {
-    if (!lvl.queueScreen) continue;
+    if (!lvl.queue) continue;
     const total = DataStore.getTickets(lvl.id).length;
     const s = summary["level" + lvl.id];
     const done = s ? s.done : 0;
@@ -1083,10 +1084,10 @@ function startLevel(n) {
   if (saved) applySnapshot(saved);
 
   const lvl = DataStore.getLevel(n);
-  if (!lvl || !lvl.queueScreen) return;
+  if (!lvl || !lvl.queue) return;
   renderQueue();
-  showScreen(lvl.queueScreen);
-  if (lvl.introModal) showModal(lvl.introModal);
+  showScreen(lvl.queue.screen);
+  if (lvl.intro && lvl.intro.modal) showModal(lvl.intro.modal);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

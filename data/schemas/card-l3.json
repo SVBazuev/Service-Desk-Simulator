@@ -1,4 +1,5 @@
 {
+    "template": "engineer",
     "fields": [
         { "id": "root", "label": "Корневая причина (своими словами) *", "type": "textarea", "required": true, "validate": { "rule": "keywords", "path": "rootKeywords" } },
         { "id": "workaround", "label": "Обходное решение (workaround) *", "type": "select", "required": true, "source": "WORKAROUNDS", "validate": { "rule": "eqIndex", "path": "workaroundCorrect" } },

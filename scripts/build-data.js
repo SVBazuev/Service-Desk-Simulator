@@ -52,13 +52,8 @@ for (const manifestFile of levelIndex.levels) {
     title: manifest.title,
     desc: manifest.desc,
     workflow: manifest.workflow || null,
-    queueScreen: manifest.queueScreen || null,
-    queueList: manifest.queueList || null,
-    queueDone: manifest.queueDone || null,
-    queueTotal: manifest.queueTotal || null,
-    queueFinish: manifest.queueFinish || null,
-    introModal: manifest.introModal || null,
-    workScreen: manifest.workScreen || null,
+    queue: manifest.queue || null,
+    intro: manifest.intro || null,
     workTitle: manifest.workTitle || null
   });
   levelData[manifest.id] = { tickets, schema };

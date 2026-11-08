@@ -1,4 +1,5 @@
 {
+    "template": "engineer",
     "fields": [
         {
             "id": "root",
