@@ -26,8 +26,8 @@ var Validator = {
       const rule = field.validate.rule;
 
       // Специальное правило для L3: вся логика вынесена в отдельный метод
-      if (rule === "l3_logic") {
-        this._validateL3Logic(ticket, formData, comparison, errs);
+      if (rule === "problem_logic") {
+        this._validateProblemLogic(ticket, formData, comparison, errs);
         continue;
       }
 
@@ -85,7 +85,7 @@ var Validator = {
   },
 
   // Вся сложная логика L3 (Problem Record, Known Error, дубликаты)
-  _validateL3Logic: function(ticket, formData, comparison, errs) {
+  _validateProblemLogic: function(ticket, formData, comparison, errs) {
     const outCorrect = formData.outcome === ticket.outcome.correct;
     const outLabel = { resolved: "Решено", new_problem: "Новая проблема", known_error: "Известная ошибка", fixed_problem: "Исправленная проблема" };
 
@@ -97,7 +97,7 @@ var Validator = {
       const problemDef = PROBLEMS.find(p => p.id === ticket.problem?.record);
       const expectedIncidents = problemDef ? problemDef.incidentsLinked : [ticket.id];
 
-      const rfcOk = this.l3CheckKeywords(formData.rfc, ticket.rootKeywords).ok;
+      const rfcOk = this.checkProblemKeywords(formData.rfc, ticket.rootKeywords).ok;
       const incErr = formData.incidents.length !== expectedIncidents.length || !expectedIncidents.every(id => formData.incidents.includes(id));
       if (incErr) errs.push("Связанные инциденты");
       comparison.push({ field: "Связанные инциденты", value: formData.incidents.join(", "), expected: expectedIncidents.join(", "), isError: incErr, explain: incErr ? "Отметьте все обращения." : "" });
@@ -125,7 +125,7 @@ var Validator = {
   },
 
   // Вспомогательная функция для L3 (поиск ключевых слов)
-  l3CheckKeywords: function(root, keywords) {
+  checkProblemKeywords: function(root, keywords) {
     const n = (root || "").toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9\s]/gi, " ").replace(/\s+/g, " ").trim();
     const matched = keywords.filter(k => n.includes(k.toLowerCase()));
     return { ok: matched.length >= 2, matched };

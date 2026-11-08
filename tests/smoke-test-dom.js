@@ -17,6 +17,7 @@ const jsFiles = [
   "js/core/validator.js",
   "js/core/progressStore.js",
   "js/utils.js",
+  "js/core/templateRenderer.js",
   "js/app.js",
   "js/autotests.js"
 ];

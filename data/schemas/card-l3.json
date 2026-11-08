@@ -15,7 +15,7 @@
                 { "value": "known_error", "label": "Известная ошибка (привязка к существующей проблеме, ждем фикс)" },
                 { "value": "fixed_problem", "label": "Исправленная проблема (привязка к закрытой проблеме, рецидив)" }
             ],
-            "validate": { "rule": "l3_logic" }
+            "validate": { "rule": "problem_logic" }
         },
         {
             "id": "problemBlock",

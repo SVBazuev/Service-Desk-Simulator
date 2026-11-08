@@ -1811,7 +1811,7 @@ var SCHEMA_L3 = {
         }
       ],
       "validate": {
-        "rule": "l3_logic"
+        "rule": "problem_logic"
       }
     },
     {
@@ -1985,7 +1985,7 @@ var SCHEMA_L4 = {
         }
       ],
       "validate": {
-        "rule": "l3_logic"
+        "rule": "problem_logic"
       }
     }
   ]

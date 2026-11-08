@@ -53,29 +53,7 @@
       </div>
     </header>
     <main class="work-wrap">
-      <div class="work-grid" data-slot="work-grid">
-        <!-- Входящее обращение -->
-        <section class="panel">
-          <header class="panel-header"><div class="panel-title">Входящее обращение</div></header>
-          <div class="panel-body" data-slot="incoming-body"></div>
-        </section>
-
-        <!-- Диагностика (L3/L4; скрыт для L1/L2) -->
-        <section class="panel" data-slot="extra-panel" style="display:none;">
-          <header class="panel-header"><div class="panel-title" data-slot="extra-title">Диагностика</div></header>
-          <div class="panel-body" data-slot="extra-body"></div>
-        </section>
-
-        <!-- Карточка -->
-        <section class="panel">
-          <header class="panel-header"><div class="panel-title" data-slot="form-title">Карточка обращения</div></header>
-          <div class="panel-body" data-slot="form-body"></div>
-          <footer class="panel-footer">
-            <button id="btn-work-cancel" class="btn">Отменить</button>
-            <button id="btn-work-submit" class="btn primary" disabled>Сохранить</button>
-          </footer>
-        </section>
-      </div>
+      <div class="work-grid" data-slot="work-grid"></div>
     </main>
   </section>
 
@@ -271,6 +249,7 @@
   <script src="js/core/validator.js"></script>
   <script src="js/core/progressStore.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/core/templateRenderer.js"></script>
   <script src="js/app.js"></script>
   <script src="js/autotests.js"></script>
 </body>

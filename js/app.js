@@ -48,10 +48,6 @@ function init() {
     renderLevelCards();
   });
 
-  document.getElementById("btn-work-submit").addEventListener("click", handleSubmit);
-  document.getElementById("btn-work-cancel").addEventListener("click", goBackFromWork);
-  document.getElementById("btn-back-queue").addEventListener("click", goBackFromWork);
-
   DataStore.getLevels().forEach(lvl => {
     if (!lvl.intro || !lvl.intro.startBtn) return;
     const btn = document.getElementById(lvl.intro.startBtn);
@@ -108,7 +104,9 @@ function onWorkClick(e) {
   const t = e.target.closest('[data-action]');
   if (!t) return;
   const action = t.dataset.action;
-  if (action === 'clarify') requestClarification();
+  if (action === 'submit') handleSubmit();
+  else if (action === 'cancel') goBackFromWork();
+  else if (action === 'clarify') requestClarification();
   else if (action === 'clarify-engineer') requestEngineerClarify();
   else if (action === 'add-prod') addProductToCard();
   else if (action === 'diag-tab') switchDiagTab(t.dataset.tabId);
@@ -208,72 +206,33 @@ function openWork(id) {
   const probBtn = document.getElementById("btn-problems-work");
   if (probBtn) probBtn.style.display = (workflow === "engineer") ? "" : "none";
 
-  // Входящее
-  renderIncoming(t, workflow);
-
-  // Extra panel (диагностика L3/L4)
-  const extraPanel = q('[data-slot="extra-panel"]');
-  const workGrid = q('[data-slot="work-grid"]');
-  if (workflow === "engineer" && Array.isArray(t.diagnostics) && t.diagnostics.length > 0) {
-    extraPanel.style.display = "";
-    q('[data-slot="extra-title"]').textContent = "Диагностика";
-    renderDiagnostics(t);
-    workGrid.classList.add("with-extra");
-  } else {
-    extraPanel.style.display = "none";
-    q('[data-slot="extra-body"]').innerHTML = "";
-    workGrid.classList.remove("with-extra");
-  }
-
-  // Карточка
-  const formBody = q('[data-slot="form-body"]');
-  formBody.innerHTML = "";
-
-  formBody.appendChild(buildReadonlyBlock(t, workflow));
-
-  const dynamicForm = document.createElement("div");
-  dynamicForm.className = "form-grid";
-  formBody.appendChild(dynamicForm);
-
-  if (workflow !== "engineer") formBody.appendChild(buildVersionsWidget());
-  if (workflow === "registrar") formBody.appendChild(buildPriorityHint());
-  if (workflow !== "engineer") formBody.appendChild(buildAutoCalcBlock());
-
-  const hintEl = document.createElement("div");
-  hintEl.className = "prio-hint";
-  hintEl.style.cssText = "display:none; background:#fffbeb; border-color:#fde68a; color:#92400e; font-size:12.5px; margin-top:12px;";
-  formBody.appendChild(hintEl);
-
-  const submitBtn = document.getElementById("btn-work-submit");
-  submitBtn.textContent =
-    workflow === "engineer" ? "Закрыть обращение"
-    : workflow === "dispatcher" ? "Изменить ответственного"
-    : "Зарегистрировать";
-
-  // Рендер формы
-  const registry = FormRenderer.render(dynamicForm, schema, {
-    ticket: t,
-    submitBtn: submitBtn,
-    hintEl: hintEl,
-    onFieldChange: (fieldId, value) => handleFieldChange(fieldId, value, t, workflow, registry),
+  // Рендер через TemplateRenderer
+  const result = TemplateRenderer.render(schema.template, schema, t, {
+    onFieldChange: (fieldId, value) => handleFieldChange(fieldId, value, t, workflow),
     onValidate: () => validateCurrentForm()
   });
-  state.currentForm = registry;
 
-  // Заполнение опций селектов
-  populateSelects(registry, t, workflow);
+  // Монтирование
+  const grid = q('[data-slot="work-grid"]');
+  grid.innerHTML = "";
+  grid.className = "work-grid" + (result.withExtra ? " with-extra" : "");
+  result.panels.forEach(p => grid.appendChild(p));
 
-  // Предзаполнение значений: L1/L2 — title/desc; L2 — каскад.
+  state.currentForm = result.registry;
+
+  // populate + prefill
+  populateSelects(result.registry, t, workflow);
+
   if (workflow === "registrar" || workflow === "dispatcher") {
-    if (registry.fields.title) registry.fields.title.value = t.title;
-    if (registry.fields.desc) registry.fields.desc.value = t.text;
+    if (result.registry.fields.title) result.registry.fields.title.value = t.title;
+    if (result.registry.fields.desc) result.registry.fields.desc.value = t.text;
   }
   if (workflow === "dispatcher") {
-    prefillDispatcher(registry, t);
-    updateAutoCalc(registry);
+    prefillDispatcher(result.registry, t);
+    updateAutoCalc(result.registry);
   }
 
-  // Версии (L1/L2)
+  // versions
   if (workflow !== "engineer") {
     if (workflow === "dispatcher") {
       const org = getOrg(t.orgId);
@@ -284,130 +243,13 @@ function openWork(id) {
     renderVerList();
   }
 
-  // Обновление видимости после предзаполнения (composite/showIf)
-  FormRenderer.updateVisibility(dynamicForm);
+  FormRenderer.updateVisibility(result.formContainer);
 
   showScreen("screen-work");
   validateCurrentForm();
 }
 
-// ============ Render: входящее ============
-
-function escapeHtml(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
-}
-
-function renderIncoming(t, workflow) {
-  const body = q('[data-slot="incoming-body"]');
-  body.innerHTML = "";
-
-  const org = getOrg(t.orgId);
-  const c = CONTACTS.find(x => x.id === t.contactId);
-  const m = calcPriority(t.imp, t.urg);
-
-  const kv = document.createElement("div");
-  kv.className = "kv";
-  kv.innerHTML = `
-    <div class="kv-row"><span class="kv-key">Организация</span><span class="kv-val">${org ? org.name : ""}</span></div>
-    <div class="kv-row"><span class="kv-key">Контакт</span><span class="kv-val">${c ? c.name + ", " + c.title : ""}</span></div>
-    <div class="kv-row"><span class="kv-key">Канал связи</span><span class="kv-val">${t.channel}</span></div>
-    ${workflow === "engineer" ? `<div class="kv-row"><span class="kv-key">Тип / Приоритет</span><span class="kv-val">${t.type} • ${m ? m.prio : "-"}</span></div>` : ""}
-    <div class="kv-row"><span class="kv-key">Заголовок</span><span class="kv-val">${t.title}</span></div>
-  `;
-  body.appendChild(kv);
-
-  const textBlock = document.createElement("div");
-  textBlock.className = "text-block";
-  textBlock.innerHTML = `<div class="text-block-title">Текст обращения</div>
-                         <div class="text-block-content">${escapeHtml(t.text)}</div>`;
-  body.appendChild(textBlock);
-
-  // Дубликат (L3)
-  if (workflow === "engineer" && t.duplicateOf) {
-    const dupBlock = document.createElement("div");
-    dupBlock.dataset.slot = "dup-block";
-    dupBlock.style.cssText = "background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; font-size:13px;";
-    dupBlock.innerHTML = `<b>Обратите внимание:</b> похоже, это повтор уже разобранных симптомов. Проверьте, не было ли подобного ранее, и есть ли Known Error с обходным решением.`;
-    body.appendChild(dupBlock);
-
-    const prev = DataStore.getTicket(state.level, t.duplicateOf);
-    const dupLink = document.createElement("div");
-    dupLink.dataset.slot = "dup-link";
-    dupLink.style.cssText = "margin-top:8px; font-size:13px;";
-    dupLink.innerHTML = `<span class="kv-key">Связано с:</span>
-                         <select data-slot="dup-select"><option value="${t.duplicateOf}">${prev ? prev.id + " • " + prev.title : t.duplicateOf}</option></select>`;
-    body.appendChild(dupLink);
-
-    const dupHint = document.createElement("div");
-    dupHint.dataset.slot = "dup-hint";
-    dupHint.style.cssText = "margin-top:8px; font-size:12px; color:var(--warn);";
-    dupHint.textContent = "⚠ Обращение похоже на повтор. Укажите, с каким обращением оно связано, и примените обходное решение из Known Error.";
-    body.appendChild(dupHint);
-  }
-
-  // Кнопка уточнения
-  const hasClarify = workflow === "engineer"
-    ? (Array.isArray(t.clarifications) && t.clarifications.length > 0)
-    : !!t.clarification;
-
-  if (hasClarify) {
-    const clarifyBtn = document.createElement("button");
-    clarifyBtn.dataset.action = workflow === "engineer" ? "clarify-engineer" : "clarify";
-    clarifyBtn.className = "btn primary";
-    clarifyBtn.style.cssText = "width:100%; border:1px dashed #93c5fd; background:#eff6ff; color:#1e40af; margin-top:10px;";
-    clarifyBtn.textContent = workflow === "engineer"
-      ? "Запросить уточняющую информацию у заказчика"
-      : "Написать заказчику и уточнить детали";
-    body.appendChild(clarifyBtn);
-
-    const clarifyBlock = document.createElement("div");
-    clarifyBlock.dataset.slot = "clarify-block";
-    clarifyBlock.style.cssText = "display:none; margin-top:10px;";
-    clarifyBlock.innerHTML = `
-      <div class="text-block" style="border-color:#c7d2fe; background-color:#eef2ff;">
-        <div class="text-block-title" style="background-color:#c7d2fe; color:#3730a3; font-weight:600;">Ответ заказчика</div>
-        <div class="text-block-content" data-slot="clarify-text" style="color:#1e3a8a; font-style:italic;"></div>
-      </div>`;
-    body.appendChild(clarifyBlock);
-  }
-}
-
 // ============ Render: диагностика ============
-
-function renderDiagnostics(t) {
-  const body = q('[data-slot="extra-body"]');
-  body.innerHTML = "";
-
-  const tabs = document.createElement("div");
-  tabs.id = "diag-tabs";
-  tabs.className = "diag-tabs";
-  body.appendChild(tabs);
-
-  const block = document.createElement("div");
-  block.className = "text-block";
-  block.innerHTML = `
-    <div class="text-block-title" data-slot="diag-title">Выберите инструмент диагностики</div>
-    <div class="text-block-content" data-slot="diag-content"
-         style="font-family:Consolas,Menlo,monospace; font-size:12.5px; white-space:pre-wrap; line-height:1.55;"></div>`;
-  body.appendChild(block);
-
-  const hint = document.createElement("div");
-  hint.className = "prio-hint";
-  hint.style.fontSize = "12.5px";
-  hint.innerHTML = `<b>Подсказка:</b> лог говорит <i>что</i> сломалось, конфигурация — <i>что изменилось</i>, лицензия — <i>куплено ли вообще</i>.`;
-  body.appendChild(hint);
-
-  (t.diagnostics || []).forEach((d, i) => {
-    const b = document.createElement("button");
-    b.className = "btn";
-    b.style.marginRight = "6px";
-    b.dataset.action = "diag-tab";
-    b.dataset.tabId = d.id;
-    b.textContent = d.label;
-    tabs.appendChild(b);
-    if (i === 0) setTimeout(() => switchDiagTab(d.id), 0);
-  });
-}
 
 function switchDiagTab(tabId) {
   const t = getTicket(state.currentId);
@@ -426,69 +268,6 @@ function switchDiagTab(tabId) {
   });
 }
 
-// ============ Build helpers ============
-
-function buildReadonlyBlock(t, workflow) {
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  const m = calcPriority(t.imp, t.urg);
-
-  if (workflow === "engineer") {
-    grid.innerHTML = `
-      <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val">${t.id}</span></div>
-      <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val">${t.ver}</span></div>
-      <div class="ro-row"><span class="ro-key">Срочность / Важность</span><span class="ro-val">${t.imp} / ${t.urg}</span></div>
-      <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val">${m ? m.react + " / " + m.sol : "-"}</span></div>`;
-  } else {
-    grid.innerHTML = `
-      <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${t.id}</span></div>
-      <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">${workflow === "dispatcher" ? "Тимлид команды Бета" : "текущий регистратор"}</span></div>
-      <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-      <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
-  }
-  return grid;
-}
-
-function buildVersionsWidget() {
-  const wrap = document.createElement("div");
-  wrap.style.marginTop = "12px";
-  wrap.innerHTML = `
-    <label class="form-field full">
-      <span class="form-label">Продукты и версии</span>
-      <div data-slot="ver-list" class="ver-list"></div>
-      <div class="ver-add-wrap">
-        <div class="ver-add-title">Добавить продукт</div>
-        <div class="ver-add-row">
-          <select data-slot="add-prod-select"></select>
-          <button type="button" data-action="add-prod" class="btn">Добавить продукт</button>
-        </div>
-      </div>
-    </label>`;
-  return wrap;
-}
-
-function buildPriorityHint() {
-  const hint = document.createElement("div");
-  hint.className = "prio-hint";
-  hint.dataset.slot = "prio-hint";
-  hint.style.display = "none";
-  hint.innerHTML = `<b>Внимание:</b> Для «Запрос на обслуживание» и «Консультация» по умолчанию устанавливается средний приоритет. Измените вручную, если заказчик указал срочность.`;
-  return hint;
-}
-
-function buildAutoCalcBlock() {
-  const auto = document.createElement("div");
-  auto.className = "auto-box";
-  auto.innerHTML = `
-    <div class="auto-title">Автоматический расчёт</div>
-    <div class="auto-grid">
-      <div class="auto-item"><div class="auto-l">Приоритет</div><div class="auto-v" data-auto="prio">-</div></div>
-      <div class="auto-item"><div class="auto-l">Срок реакции</div><div class="auto-v" data-auto="react">-</div></div>
-      <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" data-auto="sol">-</div></div>
-    </div>`;
-  return auto;
-}
 
 // ============ Populate / Prefill ============
 
@@ -565,7 +344,9 @@ function prefillDispatcher(registry, t) {
 
 // ============ Field change ============
 
-function handleFieldChange(fieldId, value, t, workflow, registry) {
+function handleFieldChange(fieldId, value, t, workflow) {
+  const registry = state.currentForm;
+  if (!registry) return;
   const f = registry.fields;
 
   if (fieldId === "org" && f.cont && f.prod) {
@@ -607,7 +388,7 @@ function handleFieldChange(fieldId, value, t, workflow, registry) {
   if (fieldId === "outcome") {
     updateLinkedProbOptions(registry, value);
     // showIf composite/select пересчёт
-    FormRenderer.updateVisibility(q('[data-slot="form-body"]'));
+    FormRenderer.updateVisibility(registry.container);
   }
 }
 

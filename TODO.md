@@ -58,25 +58,46 @@ Core пока в разработке и не выделен в отдельны
 
 ### Core
 
-- ☐ **Commit E — Schema-Driven UI (TemplateRenderer).**
-  Эта ветка (`refactor/template-renderer`) содержит D.6 + E;
-  merge в `develop` — **после E**, одной точкой.
-  - ☐ `js/core/templateRenderer.js`: шаблоны `registrar`,
-    `dispatcher`, `engineer`. Каждый —
-    `{ panels, widgets, submitLabel, onInit }`.
-  - ☐ `openWork` в `app.js` сокращается до
-    `TemplateRenderer.render(schema.template, schema, ticket)`.
-  - ☐ Убрать из `app.js`: `renderIncoming`,
+☑ **Commit E: Schema-Driven UI (TemplateRenderer) — Done**
+  - `js/core/templateRenderer.js` создан. Декларативные шаблоны
+    `registrar`, `dispatcher`, `engineer`:
+    `{ panels: [{ kind, title?, readonly?, after?, submitLabel? }] }`.
+  - Виджеты переехали в `TemplateRenderer._widgets`:
+    `versions`, `prio-hint`, `auto-calc`.
+    Readonly-блоки — `TemplateRenderer._readonly`.
+    Incoming и Diagnostics — `_renderIncomingPanel` /
+    `_renderDiagnosticsPanel`.
+  - `openWork` сокращён до: шапка → `TemplateRenderer.render`
+    → монтирование панелей в `[data-slot="work-grid"]` →
+    populate/prefill → validate.
+  - Из `app.js` удалены `renderIncoming`,
     `renderDiagnostics`, `buildReadonlyBlock`,
     `buildVersionsWidget`, `buildPriorityHint`,
-    `buildAutoCalcBlock` — они переезжают в `_widgets`
-    core.
-  - ☐ Переименовать `l3_logic` → `problem_logic`
-    (в схемах, `validator.js`, `scripts/build-data.js`).
-  - ☐ Smoke-тест ищет `[data-template="engineer"]` вместо
-    физических якорей.
+    `buildAutoCalcBlock`.
+  - `escapeHtml` переехал в `js/utils.js` (общий для
+    `showResults` и `autotests.js`).
+  - Кнопки submit/cancel рендерит `TemplateRenderer`; `init()`
+    их больше не подключает, ловятся через делегирование по
+    `data-action="submit" | "cancel"`.
+  - `handleFieldChange` читает `registry` из
+    `state.currentForm` и использует `registry.container`
+    вместо устаревшего `q('[data-slot="form-body"]')`.
+  - `index.html`: `screen-work` сокращён до topbar + пустой
+    `[data-slot="work-grid"]`. `<script templateRenderer.js>`
+    добавлен **после** `utils.js`, **до** `app.js` (обязательный
+    порядок: TemplateRenderer зависит от `utils`).
+  - `tests/smoke-test-dom.js`: добавлен
+    `js/core/templateRenderer.js` в `jsFiles` (тот же
+    порядок).
+  - Rename правила: `l3_logic` → `problem_logic`
+    (`card-l3.json`, `card-l4.json`, `validator.js`,
+    `data-bundle.js`). Тело правила не менялось.
+  - `npm test`: L1 22 / L2 16 / L3 12 / L4 manifest — PASS.
+  - **Отложено (не блокирует):** три комментария
+    `// для L3` в `validator.js` остались не
+    переименованными — косметический follow-up.
 
-- ☐ **Commit F — Collapse queues (Core).**
+☐ **Commit F: Collapse physical queues (Next)**
   - ☐ Убрать `queue.screen/list/done/total/finish` из
     манифестов — оставить только строки `title`,
     `doneLabel`, `finishLabel`, `showProblems`.

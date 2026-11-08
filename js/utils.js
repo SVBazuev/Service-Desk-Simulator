@@ -1,3 +1,8 @@
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+}
+
 function fillSelect(sel, items) {
   if (!sel) return;
   sel.innerHTML = "";
