@@ -27,16 +27,17 @@
   </section>
   <section id="screen-queue" class="screen">
     <header class="topbar">
-      <div class="topbar-title">Папка потока обращений (Уровень 1)</div>
-      <div class="topbar-info">Зарегистрировано: <span id="q-done">0</span> / <span id="q-total">0</span></div>
+      <div class="topbar-title" data-queue-title>Очередь</div>
+      <div class="topbar-info"><span data-queue-done-label>Обработано</span>: <span data-queue-done>0</span> / <span data-queue-total>0</span></div>
       <div class="topbar-actions">
         <button id="btn-org-list-queue" class="btn">Справочник организаций</button>
         <button id="btn-emp-list-queue" class="btn">Справочник сотрудников</button>
         <button id="btn-kb-queue" class="btn">База знаний</button>
-        <button id="btn-finish" class="btn" disabled>Завершить уровень</button>
+        <button data-queue-problems class="btn" style="display:none;">Проблемы</button>
+        <button data-queue-finish class="btn" disabled>Завершить уровень</button>
       </div>
     </header>
-    <main class="queue-list" id="queue-list"></main>
+    <main class="queue-list" data-queue-list></main>
   </section>
 
   <!-- УНИВЕРСАЛЬНОЕ РАБОЧЕЕ МЕСТО (L1-L4) -->
@@ -57,35 +58,6 @@
     </main>
   </section>
 
-  <section id="screen-queue-l2" class="screen">
-    <header class="topbar">
-      <div class="topbar-title">Папка потока (Уровень 2 - Тимлид)</div>
-      <div class="topbar-info">Распределено: <span id="q-done-l2">0</span> / <span id="q-total-l2">0</span></div>
-      <div class="topbar-actions">
-        <button id="btn-org-list-queue-l2" class="btn">Справочник организаций</button>
-        <button id="btn-emp-list-queue-l2" class="btn">Справочник сотрудников</button>
-        <button id="btn-kb-queue-l2" class="btn">База знаний</button>
-        <button id="btn-finish-l2" class="btn" disabled>Завершить уровень 2</button>
-      </div>
-    </header>
-    <main class="queue-list" id="queue-list-l2"></main>
-  </section>
-
-  <section id="screen-queue-engineer" class="screen">
-    <header class="topbar">
-      <div class="topbar-title">Рабочая очередь инженера (Уровень 3 - Инженер 2 линии)</div>
-      <div class="topbar-info">Решено: <span id="q-done-engineer">0</span> / <span id="q-total-engineer">0</span></div>
-      <div class="topbar-actions">
-        <button id="btn-org-list-queue-engineer" class="btn">Справочник организаций</button>
-        <button id="btn-emp-list-queue-engineer" class="btn">Справочник сотрудников</button>
-        <button id="btn-kb-queue-engineer" class="btn">База знаний</button>
-        <button id="btn-problems-engineer" class="btn">Проблемы</button>
-        <button id="btn-finish-engineer" class="btn" disabled>Завершить уровень 3</button>
-      </div>
-    </header>
-    <main class="queue-list" id="queue-list-engineer"></main>
-  </section>
-
   <section id="screen-res" class="screen">
     <header class="topbar">
       <div class="topbar-title" id="res-title">Итоги работы</div>
@@ -104,59 +76,16 @@
     </main>
   </section>
 
-  <!-- Модалки -->
-  <div id="modal-l2-intro" class="modal">
-    <div class="modal-dialog" style="width: min(600px, 96vw);">
-      <div class="modal-header">
-        <div class="modal-title">Уровень 2: Распределение и эскалации</div>
-        <button class="modal-close" data-close="modal-l2-intro">×</button>
-      </div>
-      <div class="modal-body" style="font-size: 14px; line-height: 1.6;">
-        <p>Добро пожаловать на позицию <b>Тимлида команды Бета</b>!</p>
-        <p>Теперь вы не просто регистрируете обращения, а <b>распределяете их между сотрудниками</b>. Ваша задача - правильно определить, кто должен заниматься каждым обращением, и какую задачу ему поставить.</p>
-
-        <p style="margin-top: 12px;"><b>Что нужно делать:</b></p>
-        <ul style="padding-left: 20px;">
-          <li>Изучите обращение.</li>
-          <li>Проверьте заполнение карточки (важность, срочность, подкатегории). Если что-то не так - исправьте!</li>
-          <li>Откройте <b>«Справочник сотрудников»</b>, чтобы узнать их специализацию, статус (кто-то может быть в отпуске!) и загруженность (сколько обращений уже в работе).</li>
-          <li>Выберите <b>Ответственного</b> из выпадающего списка.</li>
-          <li>Выберите <b>Комментарий / Задачу</b> для исполнителя (например, запросить анализ, взять в работу или связаться с заказчиком по вопросам сроков).</li>
-          <li>Нажмите <b>«Изменить ответственного»</b>, чтобы сохранить решение.</li>
-        </ul>
-
-        <p style="margin-top: 12px; color: var(--sub); font-size: 13px;">
-          <i>Подсказка:</i> Если вопрос касается сроков, договоров или эскалации (например, просят продлить SLA), его нужно передавать <b>менеджеру</b>, а не инженерам техподдержки. Если нужен глубокий анализ кода - <b>3-й линии (L3)</b>.
-        </p>
-      </div>
-      <div class="modal-footer">
-        <button id="btn-start-l2-work" class="btn primary">Приступить к работе</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-engineer-intro" class="modal">
+  <!-- Модалка -->
+  <div id="modal-intro" class="modal">
     <div class="modal-dialog" style="width: min(640px, 96vw);">
       <div class="modal-header">
-        <div class="modal-title">Уровень 3: Инженер 2-й линии</div>
-        <button class="modal-close" data-close="modal-engineer-intro">×</button>
+        <div class="modal-title" data-intro-title>Уровень</div>
+        <button class="modal-close" data-close="modal-intro">×</button>
       </div>
-      <div class="modal-body" style="font-size: 14px; line-height: 1.6;">
-        <p>Добро пожаловать на позицию <b>Инженера 2-й линии технической поддержки</b>! Теперь вы сами <b>решаете обращения</b>: ищете причину сбоя и восстанавливаете работу для заказчика.</p>
-        <p style="margin-top: 12px;"><b>Как работать:</b></p>
-        <ul style="padding-left: 20px;">
-          <li>Прочтите обращение. Если информации не хватает - нажмите <b>«Запросить уточняющую информацию»</b>: заказчик ответит.</li>
-          <li>Проведите <b>диагностику</b>: логи, конфигурация, лицензионный ключ (средняя панель).</li>
-          <li>В карточке решения заполните: <b>корневую причину</b> (своими словами), <b>обходное решение</b>, <b>радикальное решение</b> и <b>исход</b>.</li>
-          <li>Если исход - <b>Known Error</b>, появится блок <b>«Управление проблемами»</b>: опишите Problem Record, оцените влияние и вероятность, назначьте владельца, выберите метод расследования и напишите RFC.</li>
-          <li>Нажмите <b>«Закрыть обращение»</b>.</li>
-        </ul>
-        <p style="margin-top: 12px; color: var(--sub); font-size: 13px;">
-          <i>Подсказка:</i> Повторяющиеся инциденты с одной первопричиной - это <b>проблема (Problem)</b>, а не «опять баг». Не все обращения - инциденты: бывают запросы на обслуживание и консультации. Детали - в <b>Базе знаний</b>.
-        </p>
-      </div>
+      <div class="modal-body" data-intro-body style="font-size: 14px; line-height: 1.6;"></div>
       <div class="modal-footer">
-        <button id="btn-start-engineer-work" class="btn primary">Приступить к работе</button>
+        <button data-intro-start class="btn primary">Приступить к работе</button>
       </div>
     </div>
   </div>

@@ -6,11 +6,10 @@
     "schema": "data/schemas/card-l1.json",
     "workflow": "registrar",
     "queue": {
-        "screen": "screen-queue",
-        "list": "queue-list",
-        "done": "q-done",
-        "total": "q-total",
-        "finish": "btn-finish"
+        "title": "Папка потока обращений (Уровень 1)",
+        "doneLabel": "Зарегистрировано",
+        "finishLabel": "Завершить уровень",
+        "showProblems": false
     },
     "intro": null,
     "workTitle": "Рабочее место"

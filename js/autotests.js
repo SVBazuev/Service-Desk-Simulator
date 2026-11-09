@@ -231,7 +231,7 @@ function runAutotestsL2() {
   }
 
   renderQueue();
-  showScreen("screen-queue-l2");
+  showScreen("screen-queue");
   showModal("modal-autotest");
 }
 
@@ -328,6 +328,6 @@ function runAutotestsEngineer() {
   state.createdProblems = backupCreated;
 
   renderQueue();
-  showScreen("screen-queue-engineer");
+  showScreen("screen-queue");
   showModal("modal-autotest");
 }

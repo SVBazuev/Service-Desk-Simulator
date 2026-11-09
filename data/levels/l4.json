@@ -6,15 +6,14 @@
     "schema": "data/schemas/card-l4.json",
     "workflow": "engineer",
     "queue": {
-        "screen": "screen-queue-engineer",
-        "list": "queue-list-engineer",
-        "done": "q-done-engineer",
-        "total": "q-total-engineer",
-        "finish": "btn-finish-engineer"
+        "title": "Рабочая очередь Problem Manager",
+        "doneLabel": "Решено",
+        "finishLabel": "Завершить уровень 3",
+        "showProblems": true
     },
     "intro": {
-        "modal": "modal-engineer-intro",
-        "startBtn": "btn-start-engineer-work"
+        "title": "Уровень 3: Инженер 2-й линии",
+        "body": "<p>Добро пожаловать на позицию <b>Инженера 2-й линии технической поддержки</b>! Теперь вы сами <b>решаете обращения</b>: ищете причину сбоя и восстанавливаете работу для заказчика.</p>\n<p style=\"margin-top: 12px;\"><b>Как работать:</b></p>\n<ul style=\"padding-left: 20px;\">\n  <li>Прочтите обращение. Если информации не хватает - нажмите <b>«Запросить уточняющую информацию»</b>: заказчик ответит.</li>\n  <li>Проведите <b>диагностику</b>: логи, конфигурация, лицензионный ключ (средняя панель).</li>\n  <li>В карточке решения заполните: <b>корневую причину</b> (своими словами), <b>обходное решение</b>, <b>радикальное решение</b> и <b>исход</b>.</li>\n  <li>Если исход - <b>Known Error</b>, появится блок <b>«Управление проблемами»</b>: опишите Problem Record, оцените влияние и вероятность, назначьте владельца, выберите метод расследования и напишите RFC.</li>\n  <li>Нажмите <b>«Закрыть обращение»</b>.</li>\n</ul>"
     },
     "workTitle": "Рабочее место Problem Manager"
 }

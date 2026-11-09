@@ -109,9 +109,9 @@ async function runTest() {
 
     doc.getElementById("btn-to-level-select").click();
     doc.querySelector('[data-level="3"]').click();
-    ev("hideModal('modal-engineer-intro')");
+    ev("hideModal('modal-intro')");
 
-    if (!doc.getElementById("screen-queue-engineer").classList.contains("active")) {
+    if (!doc.getElementById("screen-queue").classList.contains("active")) {
       err("не открыт экран очереди L3");
     }
 
@@ -163,13 +163,13 @@ async function runTest() {
 
     // Счётчик
     ev("renderQueue()");
-    const done = doc.getElementById("q-done-engineer").textContent;
+    const done = doc.querySelector("[data-queue-done]").textContent;
     if (done !== String(tickets.length)) {
       err(`счётчик очереди: ${done} вместо ${tickets.length}`);
     }
 
     // Итоги
-    doc.getElementById("btn-finish-engineer").click();
+    doc.querySelector("[data-queue-finish]").click();
     if (!doc.getElementById("screen-res").classList.contains("active")) {
       err("не открыт экран результатов");
     }
