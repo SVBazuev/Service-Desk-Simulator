@@ -33,6 +33,45 @@ Core пока в разработке и не выделен в отдельны
   `intro` в манифестах; `"template"` объявлен в схемах
   (рантайм читает — в Commit E). DOM-anchor'ы `-l3` →
   `-engineer`.
+- **[Core] Commit E — Schema-Driven UI (TemplateRenderer).**
+  `js/core/templateRenderer.js` с декларативными шаблонами
+  `registrar` / `dispatcher` / `engineer`:
+  `{ panels: [{ kind, title?, readonly?, after?, submitLabel? }] }`.
+  Виджеты в `TemplateRenderer._widgets` (`versions`,
+  `prio-hint`, `auto-calc`); readonly-блоки в
+  `_readonly`; incoming / diagnostics в
+  `_renderIncomingPanel` / `_renderDiagnosticsPanel`.
+  `openWork` сокращён до: шапка → `TemplateRenderer.render`
+  → монтирование панелей → populate/prefill → validate. Из
+  `app.js` удалены `renderIncoming`,
+  `renderDiagnostics`, `buildReadonlyBlock`,
+  `buildVersionsWidget`, `buildPriorityHint`,
+  `buildAutoCalcBlock`. `escapeHtml` вынесен в
+  `js/utils.js`. Кнопки submit/cancel рендерит шаблон
+  (`data-action="submit" | "cancel"`). Rename правила
+  `l3_logic` → `problem_logic` в схемах,
+  `validator.js`, `data-bundle.js`.
+- **[Core] Commit F — Collapse physical queues.**
+  Манифест уровня больше не знает ни одного DOM-id:
+  `queue: { screen, list, done, total, finish }` заменён на
+  `{ title, doneLabel, finishLabel, showProblems }`;
+  `intro: { modal, startBtn }` заменён на
+  `{ title, body }` (HTML). В `index.html` — одна
+  `<section id="screen-queue">` с `data-queue-*`
+  атрибутами и одна `<div id="modal-intro">` с
+  `data-intro-title` / `data-intro-body` /
+  `data-intro-start`. `renderQueue()` читает всё из
+  единственной секции через `data-queue-*` lookups;
+  `startLevel()` заполняет модалку из `lvl.intro`.
+  `init()` больше не подключает кнопки по id — одна
+  `data-queue-finish`, одна `data-intro-start`, одна
+  `data-queue-problems`. Тесты используют
+  `[data-queue-done]` / `[data-queue-finish]` /
+  `modal-intro`. После F: `grep` по
+  `screen-queue-l|screen-queue-engineer|queue-list-l|
+  queue-list-engineer|q-done-l|q-done-engineer|btn-finish-l|
+  btn-finish-engineer|modal-l2-intro|modal-engineer-intro`
+  по `js/` и `data/levels/` — пусто.
 
 ### Приложение Service Desk Simulator
 
@@ -51,72 +90,12 @@ Core пока в разработке и не выделен в отдельны
 - `fillSelect` принимает только объекты `{value, label}`.
 - `renderLevelCards` больше не проверяет устаревший
   `lvl.queueScreen`.
+- `npm test` после F: L1 22 / L2 16 / L3 12 / L4 manifest —
+  PASS.
 
 ---
 
 ## 🔥 Высокий приоритет (Next)
-
-### Core
-
-☑ **Commit E: Schema-Driven UI (TemplateRenderer) — Done**
-  - `js/core/templateRenderer.js` создан. Декларативные шаблоны
-    `registrar`, `dispatcher`, `engineer`:
-    `{ panels: [{ kind, title?, readonly?, after?, submitLabel? }] }`.
-  - Виджеты переехали в `TemplateRenderer._widgets`:
-    `versions`, `prio-hint`, `auto-calc`.
-    Readonly-блоки — `TemplateRenderer._readonly`.
-    Incoming и Diagnostics — `_renderIncomingPanel` /
-    `_renderDiagnosticsPanel`.
-  - `openWork` сокращён до: шапка → `TemplateRenderer.render`
-    → монтирование панелей в `[data-slot="work-grid"]` →
-    populate/prefill → validate.
-  - Из `app.js` удалены `renderIncoming`,
-    `renderDiagnostics`, `buildReadonlyBlock`,
-    `buildVersionsWidget`, `buildPriorityHint`,
-    `buildAutoCalcBlock`.
-  - `escapeHtml` переехал в `js/utils.js` (общий для
-    `showResults` и `autotests.js`).
-  - Кнопки submit/cancel рендерит `TemplateRenderer`; `init()`
-    их больше не подключает, ловятся через делегирование по
-    `data-action="submit" | "cancel"`.
-  - `handleFieldChange` читает `registry` из
-    `state.currentForm` и использует `registry.container`
-    вместо устаревшего `q('[data-slot="form-body"]')`.
-  - `index.html`: `screen-work` сокращён до topbar + пустой
-    `[data-slot="work-grid"]`. `<script templateRenderer.js>`
-    добавлен **после** `utils.js`, **до** `app.js` (обязательный
-    порядок: TemplateRenderer зависит от `utils`).
-  - `tests/smoke-test-dom.js`: добавлен
-    `js/core/templateRenderer.js` в `jsFiles` (тот же
-    порядок).
-  - Rename правила: `l3_logic` → `problem_logic`
-    (`card-l3.json`, `card-l4.json`, `validator.js`,
-    `data-bundle.js`). Тело правила не менялось.
-  - `npm test`: L1 22 / L2 16 / L3 12 / L4 manifest — PASS.
-  - **Отложено (не блокирует):** три комментария
-    `// для L3` в `validator.js` остались не
-    переименованными — косметический follow-up.
-
-☐ **Commit F: Collapse physical queues (Next)**
-  - ☐ Убрать `queue.screen/list/done/total/finish` из
-    манифестов — оставить только строки `title`,
-    `doneLabel`, `finishLabel`, `showProblems`.
-  - ☐ Одна `<section id="screen-queue" data-queue-for>` в
-    `index.html`.
-  - ☐ `renderQueue` через `data-queue-*` атрибуты.
-  - ☐ Intro-модалка коллапсируется в `<div data-intro-for>`;
-    `intro.modal` / `intro.startBtn` уходят из
-    манифестов, вместо них `intro.title` / `intro.body`
-    (HTML).
-
-### App
-
-- ☐ После E и F — переоценить: что ещё можно вынести в JSON. Пока
-  приложение в основном **готово**.
-
----
-
-## ⚙️ Технический долг и архитектура
 
 ### Core
 
@@ -135,6 +114,52 @@ Core пока в разработке и не выделен в отдельны
   - ☐ Разбить `app.js`: бизнес-логика переезжает в
     `service-desk/app/*.js`, core остаётся в `js/core/`.
 
+- ☐ **Commit I — Intro через словарь данных (data-lookup).**
+  После F манифесты L3/L4 содержат идентичные `intro.body` с
+  HTML — дублирование. HTML в JSON здесь допустим (intro — rich
+  text, не layout), но дублирование — нет.
+  Решение — **не в движке**, а в данных:
+  - ☐ `data/common/intros.json`: именованные записи
+    (`dispatcher`, `engineer`, …) с полями
+    `title` / `body`.
+  - ☐ `scripts/build-data.js`: добавить `INTROS` в
+    `COMMON_JSON`.
+  - ☐ `js/core/dataStore.js`: метод
+    `getIntro(def)` — принимает строку (имя) или объект
+    `{ template, title?, body? }` с override; возвращает
+    `{ title, body }`.
+  - ☐ Манифесты: `"intro": "dispatcher"` /
+    `"engineer"`; L4 —
+    `{ "template": "engineer", "title": "…" }`
+    (переиспользует тело, переопределяет заголовок).
+  - ☐ `startLevel()` в `app.js` вызывает
+    `DataStore.getIntro(lvl.intro)` — 2 строки.
+  - ☐ Тесты без изменений: интерфейс модалки
+    (`[data-intro-title]` / `[data-intro-body]`)
+    и её id (`modal-intro`) не меняются.
+  - ☐ **Не входит**: i18n. Локализация — отдельная итерация:
+    `intros-ru.json` / `intros-en.json` +
+    параметр языка в `getIntro`.
+  - ☐ **Осознанно НЕ в `TemplateRenderer`**: у него одна
+    ответственность — work screen (panels + Registry + submit).
+    Intro — content/lookup, не layout. Параллельный
+    `TemplateRenderer.intros` / `renderIntro` раздувал
+    бы API, вводя второй механизм с тем же контрактом.
+  - ☐ **Когда**: сразу после merge F (долг маленький). I и G не
+    пересекаются по файлам — если G начнётся первым, I можно
+    сделать в новой раскладке файлов.
+
+### App
+
+- ☐ После E и F — переоценить: что ещё можно вынести в JSON. Пока
+  приложение в основном **готово**.
+
+---
+
+## ⚙️ Технический долг и архитектура
+
+### Core
+
 - ☐ **Null-guard'ы.** В `FormRenderer` и `runAutotests*`
   при работе с `getElementById(…)` без проверки на `null`.
   Ввести привычку: `const el = document.getElementById(...);
@@ -145,7 +170,7 @@ Core пока в разработке и не выделен в отдельны
 - ☐ **Восстановить декларативные tabs/actions** в `card-l3.json`.
   В D.5 они временно заменены на hardcoded `renderIncoming` /
   `renderDiagnostics`; вернуть data-driven подход через
-  `TemplateRenderer` (задача E).
+  `TemplateRenderer` (задача E закрыта, но tabs/actions — нет).
 
 ### App
 
@@ -173,7 +198,9 @@ Core пока в разработке и не выделен в отдельны
 
 - ☐ Расширение Базы Знаний (SLA, эскалация, конфликтные клиенты).
 - ☐ Больше карточек для L1 и L2 (вариативность).
-- ☐ Локализация (i18n) — задачи + UI.
+- ☐ Локализация (i18n) — задачи + UI. Первый кандидат —
+  intro-шаблоны из Commit I: `intros.engineer.ru` /
+  `intros.engineer.en` по аналогии с `schema.template`.
 
 ## 🚀 Features / Backend
 
