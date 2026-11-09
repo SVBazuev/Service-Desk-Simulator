@@ -48,14 +48,8 @@ function init() {
     renderLevelCards();
   });
 
-  DataStore.getLevels().forEach(lvl => {
-    if (!lvl.intro || !lvl.intro.startBtn) return;
-    const btn = document.getElementById(lvl.intro.startBtn);
-    if (!btn) return;
-    btn.addEventListener("click", () => {
-      hideModal(lvl.intro.modal);
-      showScreen(lvl.queue.screen);
-    });
+  document.querySelector("[data-intro-start]").addEventListener("click", () => {
+    hideModal("modal-intro");
   });
 
   // Делегирование кликов внутри рабочего экрана
@@ -74,7 +68,8 @@ function init() {
   ));
   document.querySelectorAll("[id^='btn-kb']").forEach(b => b.addEventListener("click", openKb));
   document.querySelectorAll("[id^='btn-problems']").forEach(b => b.addEventListener("click", openProblems));
-
+  const queueProbBtn = document.querySelector("[data-queue-problems]");
+  if (queueProbBtn) queueProbBtn.addEventListener("click", openProblems);
   document.getElementById("btn-res-restart").addEventListener("click", restart);
 
   document.getElementById("btn-reg-ok").addEventListener("click", () => {
@@ -86,14 +81,8 @@ function init() {
     goBackFromWork();
   });
 
-  DataStore.getLevels().forEach(lvl => {
-    const btn = (lvl.queue && lvl.queue.finish) ? document.getElementById(lvl.queue.finish) : null;
-    if (btn) {
-      btn.addEventListener("click", () => {
-        if (state.level === lvl.id) showResults(state.level);
-      });
-    }
-  });
+  const queueFinishBtn = document.querySelector("[data-queue-finish]");
+  if (queueFinishBtn) queueFinishBtn.addEventListener("click", () => showResults(state.level));
 
   buildKb();
 }
@@ -127,16 +116,21 @@ function goBackFromWork() {
   }
   renderQueue();
   const lvl = DataStore.getLevel(state.level);
-  if (lvl && lvl.queue) showScreen(lvl.queue.screen);
+  if (lvl && lvl.queue) showScreen("screen-queue");
 }
 
 // ============ Очередь ============
 
 function renderQueue() {
   const lvl = DataStore.getLevel(state.level);
-  if (!lvl || !lvl.queue || !lvl.queue.list) return;
-  const list = document.getElementById(lvl.queue.list);
-  if (!list) return;
+  if (!lvl || !lvl.queue) return;
+  const section = document.getElementById("screen-queue");
+  if (!section) return;
+
+  section.querySelector("[data-queue-title]").textContent = lvl.queue.title;
+  section.querySelector("[data-queue-done-label]").textContent = lvl.queue.doneLabel;
+
+  const list = section.querySelector("[data-queue-list]");
   list.innerHTML = "";
 
   const workflow = lvl.workflow;
@@ -144,11 +138,9 @@ function renderQueue() {
   const results = getResults();
   let done = 0;
 
-  const totalEl = document.getElementById(lvl.queue.total);
-  if (totalEl) totalEl.textContent = tickets.length;
+  section.querySelector("[data-queue-total]").textContent = tickets.length;
 
   const isRegistrar = workflow === "registrar";
-  const badgeDone = isRegistrar ? "Зарегистрировано" : workflow === "dispatcher" ? "Распределено" : "Решено";
   const iconSvg = isRegistrar
     ? '<path d="M3 7h5l2 2h11v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor"/>'
     : '<path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" stroke="currentColor"/>';
@@ -173,16 +165,22 @@ function renderQueue() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">${iconSvg}</svg>
         <div><div class="queue-title">${title}</div><div class="queue-sub">${t.id} • ${t.title || t.prod || ''}</div></div>
       </div>
-      <div class="badge">${reg ? badgeDone : "Ожидает"}</div>
+      <div class="badge">${reg ? lvl.queue.doneLabel : "Ожидает"}</div>
     `;
     if (!reg) item.addEventListener("click", () => openWork(t.id));
     list.appendChild(item);
   }
 
-  const doneEl = document.getElementById(lvl.queue.done);
-  if (doneEl) doneEl.textContent = done.toString();
-  const finishBtn = document.getElementById(lvl.queue.finish);
-  if (finishBtn) finishBtn.disabled = done < tickets.length;
+  section.querySelector("[data-queue-done]").textContent = done;
+
+  const finishBtn = section.querySelector("[data-queue-finish]");
+  if (finishBtn) {
+    finishBtn.textContent = lvl.queue.finishLabel;
+    finishBtn.disabled = done < tickets.length;
+  }
+
+  const probBtn = section.querySelector("[data-queue-problems]");
+  if (probBtn) probBtn.style.display = lvl.queue.showProblems ? "" : "none";
 }
 
 // ============ Универсальное рабочее место ============
@@ -867,8 +865,13 @@ function startLevel(n) {
   const lvl = DataStore.getLevel(n);
   if (!lvl || !lvl.queue) return;
   renderQueue();
-  showScreen(lvl.queue.screen);
-  if (lvl.intro && lvl.intro.modal) showModal(lvl.intro.modal);
+  showScreen("screen-queue");
+  if (lvl.intro) {
+    const modal = document.getElementById("modal-intro");
+    modal.querySelector("[data-intro-title]").textContent = lvl.intro.title;
+    modal.querySelector("[data-intro-body]").innerHTML = lvl.intro.body;
+    showModal("modal-intro");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
