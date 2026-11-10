@@ -23,6 +23,13 @@ const jsFiles = [
   "js/service-desk/workflows.js",
   "js/service-desk/validators.js",
   "js/service-desk/middleware.js",
+  "js/service-desk/app/init.js",
+  "js/service-desk/app/router.js",
+  "js/service-desk/app/submits.js",
+  "js/service-desk/app/forms.js",
+  "js/service-desk/app/levels.js",
+  "js/service-desk/app/reference.js",
+  "js/service-desk/app/kb.js",
   "js/app.js",
   "js/autotests.js"
 ];
@@ -152,7 +159,7 @@ async function runTest() {
       if (t.duplicateOf) setDup(t.duplicateOf);
 
       ev("validateCurrentForm()");
-      ev("submitEngineer()");
+      ev("submitLevel()");
       ev("hideModal('modal-reg')");
 
       const res = ev(`state.resultsEngineer['${t.id}']`);
@@ -203,7 +210,7 @@ async function runTest() {
       outcome: "new_problem"
     });
     ev("validateCurrentForm()");
-    ev("submitEngineer()");
+    ev("submitLevel()");
     ev("hideModal('modal-reg')");
 
     const res2 = ev(`state.resultsEngineer['TK-302']`);

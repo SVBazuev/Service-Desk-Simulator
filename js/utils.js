@@ -1,3 +1,5 @@
+function q(sel) { return document.querySelector(sel); }
+
 function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g,
     ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));

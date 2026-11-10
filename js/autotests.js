@@ -115,7 +115,7 @@ function runAutotests() {
     setField("imp", et.imp);
     setField("urg", et.urg);
 
-    register();
+    submitLevel();
     hideModal("modal-reg");
 
     const res1 = state.results[t.id];
@@ -139,7 +139,7 @@ function runAutotests() {
     setField("imp", et.imp === "высокая" ? "низкая" : "высокая");
     setField("urg", et.urg === "высокая" ? "низкая" : "высокая");
 
-    register();
+    submitLevel();
     hideModal("modal-reg");
 
     const res2 = state.results[t.id];
@@ -186,7 +186,7 @@ function runAutotestsL2() {
     // ТЕСТ 1: Правильно
     setField("assignee", t.expectedAssignee);
     setField("comment", t.expectedComment);
-    assignL2();
+    submitLevel();
     hideModal("modal-assign");
 
     const res1 = state.resultsL2[t.id];
@@ -205,7 +205,7 @@ function runAutotestsL2() {
     setField("assignee", wrongAssignee.id);
     setField("comment", wrongComment.id);
 
-    assignL2();
+    submitLevel();
     hideModal("modal-assign");
 
     const res2 = state.resultsL2[t.id];
@@ -276,7 +276,7 @@ function runAutotestsEngineer() {
     }
 
     validateCurrentForm();
-    submitEngineer();
+    submitLevel();
     hideModal("modal-reg");
 
     const res1 = state.resultsEngineer[t.id];
@@ -305,7 +305,7 @@ function runAutotestsEngineer() {
     }
 
     validateCurrentForm();
-    submitEngineer();
+    submitLevel();
     hideModal("modal-reg");
 
     const res2 = state.resultsEngineer[t.id];
