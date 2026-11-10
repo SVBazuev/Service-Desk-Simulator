@@ -22,6 +22,7 @@ const jsFiles = [
   "js/service-desk/panels.js",
   "js/service-desk/workflows.js",
   "js/service-desk/validators.js",
+  "js/service-desk/middleware.js",
   "js/app.js",
   "js/autotests.js"
 ];
@@ -236,6 +237,32 @@ async function runTest() {
     const expectedL2 = ev("TICKETS_L2.length") * 2;
     console.log(`Автотесты L2: ${l2Ok} OK / ${l2Bad} BAD (ожидалось ${expectedL2} OK / 0 BAD)`);
     if (l2Bad > 0) err(`автотесты L2 провалились: ${l2Bad} BAD`);
+
+    // G.1b: middleware — audit log grows on every submit
+    ev("state.level = 3");
+    ev("openWork('TK-302')");
+    ev("requestEngineerClarify()");
+    applyFields({
+      root: "объем данных, таймаут, индекс",
+      workaround: "0",
+      radical: "0",
+      outcome: "resolved"
+    });
+    const mwLogBefore = ev("State.submitLog.length");
+    ev("submitLevel()");
+    ev("hideModal('modal-reg')");
+    const mwLogAfter = ev("State.submitLog.length");
+    if (mwLogAfter !== mwLogBefore + 1) {
+      err(`middleware: submitLog ${mwLogBefore} -> ${mwLogAfter} (expected +1)`);
+    }
+    const lastMwLog = ev("State.submitLog[State.submitLog.length - 1]");
+    if (!lastMwLog || lastMwLog.ticketId !== "TK-302") {
+      err(`middleware: last log ticketId=${lastMwLog && lastMwLog.ticketId}, expected TK-302`);
+    }
+    if (lastMwLog.level !== 3 || lastMwLog.workflow !== "engineer") {
+      err(`middleware: level/workflow mismatch: ${lastMwLog.level}/${lastMwLog.workflow}`);
+    }
+    console.log("G.1b middleware: audit log populated — OK");
 
     // L4 manifest
     const l4Ids = ev("DataStore.getLevels().map(l => l.id)");

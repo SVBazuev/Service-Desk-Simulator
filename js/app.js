@@ -102,11 +102,61 @@ function onWorkClick(e) {
 }
 
 function handleSubmit() {
-  const wf = DataStore.getLevelWorkflow(state.level);
-  if (wf === 'engineer') submitEngineer();
-  else if (wf === 'dispatcher') assignL2();
-  else register();
+  submitLevel();
 }
+
+// Unified submit for all workflows. Middleware runs around
+// validation+persist; side effects fire after a non-aborted result.
+function submitLevel() {
+  const t = getTicket(state.currentId);
+  if (!t || !state.currentForm) return;
+
+  const level = state.level;
+  const workflow = DataStore.getLevelWorkflow(level);
+  const schema = DataStore.getSchema(level);
+  const formData = FormRenderer.getFormData(state.currentForm, schema);
+
+  // Workflow-specific form enrichment (before validation).
+  if (workflow === "engineer") {
+    const dupSel = q('[data-slot="dup-select"]');
+    formData.dupVal = dupSel ? dupSel.value : "";
+  } else {
+    formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
+  }
+
+  const ctx = { level, workflow, ticket: t, schema, formData, state: State };
+  const result = Extension.runMiddleware(ctx, (c) => {
+    const r = Validator.validate(c.schema, c.ticket, c.formData);
+    state.getResults(c.level)[c.ticket.id] = r;
+    return r;
+  });
+
+  if (!result) return; // aborted by a middleware
+
+  if (workflow === "registrar") {
+    showSuccess(t.id, "modal-reg");
+  } else if (workflow === "dispatcher") {
+    showSuccess(t.id, "modal-assign");
+    const emp = DataStore.getEmployees().find(e => e.id === formData.assignee);
+    if (emp && emp.workload !== undefined) emp.workload += 1;
+  } else if (workflow === "engineer") {
+    if (formData.outcome === "new_problem" && result.ok && t.problem) {
+      const record = t.problem.record;
+      if (record && !state.createdProblems.includes(record)) {
+        state.createdProblems.push(record);
+      }
+    }
+    showSuccess(t.id, "modal-reg");
+  }
+
+  ProgressStore.save(level, makeSnapshot());
+}
+
+// Backward-compat aliases — used by autotests.js and external callers.
+// They rely on `state.level` being set by the caller (autotests do).
+function register() { submitLevel(); }
+function assignL2() { submitLevel(); }
+function submitEngineer() { submitLevel(); }
 
 function goBackFromWork() {
   state.currentId = null;
@@ -426,50 +476,6 @@ function showSuccess(ticketId, modalId) {
   const idEl = document.getElementById(modalId === "modal-assign" ? "assign-ok-id" : "reg-ok-id");
   if (idEl) idEl.textContent = ticketId;
   showModal(modalId);
-}
-
-function register() {
-  const t = DataStore.getTicket(1, state.currentId);
-  if (!t || !state.currentForm) return;
-  const schema = DataStore.getSchema(1);
-  const formData = FormRenderer.getFormData(state.currentForm, schema);
-  formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
-  state.getResults(1)[t.id] = Validator.validate(schema, t, formData);
-  ProgressStore.save(1, makeSnapshot());
-  showSuccess(t.id, "modal-reg");
-}
-
-function assignL2() {
-  const t = DataStore.getTicket(2, state.currentId);
-  if (!t || !state.currentForm) return;
-  const schema = DataStore.getSchema(2);
-  const formData = FormRenderer.getFormData(state.currentForm, schema);
-  formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
-  state.getResults(2)[t.id] = Validator.validate(schema, t, formData);
-  ProgressStore.save(2, makeSnapshot());
-  showSuccess(t.id, "modal-assign");
-  const emp = DataStore.getEmployees().find(e => e.id === formData.assignee);
-  if (emp && emp.workload !== undefined) emp.workload += 1;
-}
-
-function submitEngineer() {
-  const t = getTicket(state.currentId);
-  if (!t || !state.currentForm) return;
-  const schema = DataStore.getSchema(state.level);
-  const formData = FormRenderer.getFormData(state.currentForm, schema);
-  const dupSel = q('[data-slot="dup-select"]');
-  formData.dupVal = dupSel ? dupSel.value : "";
-
-  const result = Validator.validate(schema, t, formData);
-  state.getResults(state.level)[t.id] = result;
-
-  if (formData.outcome === "new_problem" && result.ok) {
-    if (!state.createdProblems.includes(t.problem?.record)) {
-      state.createdProblems.push(t.problem?.record);
-    }
-  }
-  showSuccess(t.id, "modal-reg");
-  ProgressStore.save(state.level, makeSnapshot());
 }
 
 // ============ Результаты ============
