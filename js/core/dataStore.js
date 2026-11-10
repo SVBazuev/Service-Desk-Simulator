@@ -12,6 +12,20 @@ var DataStore = {
   getEmployees: () => EMPLOYEES,
   getEmployeesL3: () => EMPLOYEES_L3,
   getCommentsL2: () => COMMENTS_L2,
+  // Intro-словарь: по имени или по объекту с override.
+  // Строка → базовая запись; объект { template, title?, body? } →
+  // базовая запись с переопределёнными полями.
+  getIntro: (def) => {
+    if (!def) return null;
+    const key = typeof def === "string" ? def : def.template;
+    const base = INTROS[key];
+    if (!base) return null;
+    if (typeof def === "string") return base;
+    return {
+      title: (def.title !== undefined) ? def.title : base.title,
+      body:  (def.body  !== undefined) ? def.body  : base.body
+    };
+  },
 
   getTax: () => TAX,
   getMatrix: () => MATRIX,

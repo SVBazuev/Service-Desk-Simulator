@@ -867,10 +867,15 @@ function startLevel(n) {
   renderQueue();
   showScreen("screen-queue");
   if (lvl.intro) {
-    const modal = document.getElementById("modal-intro");
-    modal.querySelector("[data-intro-title]").textContent = lvl.intro.title;
-    modal.querySelector("[data-intro-body]").innerHTML = lvl.intro.body;
-    showModal("modal-intro");
+    const intro = DataStore.getIntro(lvl.intro);
+    if (!intro) {
+      console.warn("[Ludus] Unknown intro:", lvl.intro);
+    } else {
+      const modal = document.getElementById("modal-intro");
+      modal.querySelector("[data-intro-title]").textContent = intro.title;
+      modal.querySelector("[data-intro-body]").innerHTML = intro.body;
+      showModal("modal-intro");
+    }
   }
 }
 

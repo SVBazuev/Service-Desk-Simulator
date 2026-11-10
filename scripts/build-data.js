@@ -15,6 +15,7 @@ const COMMON_JSON = {
   MATRIX: "data/common/matrix.json",
   PROBLEM_METHODS: "data/common/problem-methods.json",
   ARCHIVE_INCIDENTS: "data/common/archive-incidents.json",
+  INTROS: "data/common/intros.json",
   PROBLEMS: "data/problems.json",
   KB_L3: "data/kb-l3.json"
 };

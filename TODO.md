@@ -114,7 +114,7 @@ Core пока в разработке и не выделен в отдельны
   - ☐ Разбить `app.js`: бизнес-логика переезжает в
     `service-desk/app/*.js`, core остаётся в `js/core/`.
 
-- ☐ **Commit I — Intro через словарь данных (data-lookup).**
+- ☐ **Commit F.5 — Intro через словарь данных (data-lookup).**
   После F манифесты L3/L4 содержат идентичные `intro.body` с
   HTML — дублирование. HTML в JSON здесь допустим (intro — rich
   text, не layout), но дублирование — нет.
@@ -199,7 +199,7 @@ Core пока в разработке и не выделен в отдельны
 - ☐ Расширение Базы Знаний (SLA, эскалация, конфликтные клиенты).
 - ☐ Больше карточек для L1 и L2 (вариативность).
 - ☐ Локализация (i18n) — задачи + UI. Первый кандидат —
-  intro-шаблоны из Commit I: `intros.engineer.ru` /
+  intro-шаблоны из Commit F.5: `intros.engineer.ru` /
   `intros.engineer.en` по аналогии с `schema.template`.
 
 ## 🚀 Features / Backend
