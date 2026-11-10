@@ -1,7 +1,8 @@
 /**
- * dataStore.js — централизованное хранилище данных.
- * Инкапсулирует глобальные переменные, созданные сборщиком (data-bundle.js).
+ * dataStore.js — centralized data store.
+ * Encapsulates global variables created by the bundler (data-bundle.js).
  */
+
 var DataStore = {
   getOrgs: () => ORGS,
   getOrg: (id) => ORGS.find(o => o.id === id),
@@ -12,9 +13,8 @@ var DataStore = {
   getEmployees: () => EMPLOYEES,
   getEmployeesL3: () => EMPLOYEES_L3,
   getCommentsL2: () => COMMENTS_L2,
-  // Intro-словарь: по имени или по объекту с override.
-  // Строка → базовая запись; объект { template, title?, body? } →
-  // базовая запись с переопределёнными полями.
+  // Intro dictionary: lookup by name or by { template, title?, body? }
+  // object. String → base entry; object → base entry with overrides.
   getIntro: (def) => {
     if (!def) return null;
     const key = typeof def === "string" ? def : def.template;
@@ -30,7 +30,7 @@ var DataStore = {
   getTax: () => TAX,
   getMatrix: () => MATRIX,
 
-  // Уровни (метаданные из манифестов)
+  // Levels (metadata from manifests)
   getLevels: () => LEVELS,
   getLevel: (id) => LEVELS.find(l => l.id === id) || null,
   getLevelWorkflow: (id) => {
@@ -38,7 +38,7 @@ var DataStore = {
     return lvl ? lvl.workflow : null;
   },
 
-  // Тикеты по уровню (из LEVEL_DATA)
+  // Tickets by level (from LEVEL_DATA)
   getTickets: (level) => {
     const data = LEVEL_DATA[level];
     return data ? data.tickets : [];
@@ -48,7 +48,7 @@ var DataStore = {
     return tickets.find(t => t.id === id);
   },
 
-  // Схемы по уровню
+  // Schemas by level
   getSchema: (level) => {
     const data = LEVEL_DATA[level];
     return data ? data.schema : null;

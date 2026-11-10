@@ -1,23 +1,30 @@
 /**
- * state.js — централизованное состояние приложения.
+ * state.js — centralized application state.
+ * Domain slots (orgVersions, engineer) are registered by the
+ * application via Extension.registerSlot.
  */
 var State = {
   level: 1,
   currentId: null,
   currentForm: null,
-  resultsByLevel: {},  // { 1: {}, 2: {}, 3: {}, ... }
-  orgVersions: [],
+  resultsByLevel: {},
   createdProblems: [],
-  engineer: { requestedClarify: false, clarified: false, diagOpen: null },
+  _slots: {},
+
+  registerSlot: function(name, initial) {
+    this[name] = Array.isArray(initial) ? [...initial] : { ...initial };
+    this._slots[name] = initial;
+  },
 
   reset: function() {
     this.level = 1;
     this.currentId = null;
     this.currentForm = null;
     this.resultsByLevel = {};
-    this.orgVersions = [];
     this.createdProblems = [];
-    this.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
+    for (const [name, initial] of Object.entries(this._slots)) {
+      this[name] = Array.isArray(initial) ? [...initial] : { ...initial };
+    }
   },
 
   getResults: function(level) {
@@ -25,7 +32,7 @@ var State = {
     return this.resultsByLevel[level];
   },
 
-  // Backward-compat accessors (используются autotests.js)
+  // Backward-compat accessors (used by autotests.js)
   get results()   { return this.getResults(1); },
   set results(v)  { this.resultsByLevel[1] = v; },
   get resultsL2() { return this.getResults(2); },
