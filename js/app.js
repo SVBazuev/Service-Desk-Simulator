@@ -247,26 +247,6 @@ function openWork(id) {
   validateCurrentForm();
 }
 
-// ============ Render: диагностика ============
-
-function switchDiagTab(tabId) {
-  const t = getTicket(state.currentId);
-  if (!t || !t.diagnostics) return;
-  const d = t.diagnostics.find(x => x.id === tabId);
-  if (!d) return;
-  const title = q('[data-slot="diag-title"]');
-  const content = q('[data-slot="diag-content"]');
-  if (title) title.textContent = d.label;
-  if (content) content.textContent = d.content;
-  document.querySelectorAll('#diag-tabs .btn').forEach(b => {
-    const active = b.dataset.tabId === tabId;
-    b.style.background = active ? "var(--primary)" : "";
-    b.style.color = active ? "#fff" : "";
-    b.style.borderColor = active ? "transparent" : "";
-  });
-}
-
-
 // ============ Populate / Prefill ============
 
 function populateSelects(registry, t, workflow) {
@@ -390,17 +370,6 @@ function handleFieldChange(fieldId, value, t, workflow) {
   }
 }
 
-function updateAutoCalc(registry) {
-  if (!registry.fields.imp || !registry.fields.urg) return;
-  const m = calcPriority(registry.fields.imp.value, registry.fields.urg.value);
-  const prio = q('[data-auto="prio"]');
-  const react = q('[data-auto="react"]');
-  const sol = q('[data-auto="sol"]');
-  if (prio) prio.textContent = m ? m.prio : "-";
-  if (react) react.textContent = m ? m.react : "-";
-  if (sol) sol.textContent = m ? m.sol : "-";
-}
-
 function updateLinkedProbOptions(registry, outcome) {
   const sel = registry.fields.linkedProb;
   if (!sel) return;
@@ -449,68 +418,6 @@ function requestEngineerClarify() {
   if (block) block.style.display = "block";
   const btn = q('[data-action="clarify-engineer"]');
   if (btn) btn.style.display = "none";
-}
-
-// ============ Versions widget ============
-
-function renderVerList() {
-  const list = q('[data-slot="ver-list"]');
-  if (!list) return;
-  list.innerHTML = "";
-  if (!state.orgVersions || state.orgVersions.length === 0) {
-    list.innerHTML = "<div style='color:var(--sub);font-size:13px'>Нет данных</div>";
-    renderAddProdSelect();
-    return;
-  }
-  for (const v of state.orgVersions) {
-    const row = document.createElement("div");
-    row.className = "ver-row";
-    row.innerHTML = `<div class="ver-name">${v.name}</div><select data-ver-id="${v.id}"><option value="${v.ver}">${v.ver}</option></select><button class="ver-del" data-del-id="${v.id}">×</button>`;
-    list.appendChild(row);
-  }
-  list.querySelectorAll(".ver-del").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idv = parseInt(btn.getAttribute("data-del-id"));
-      state.orgVersions = state.orgVersions.filter(x => x.id !== idv);
-      renderVerList();
-      validateCurrentForm();
-    });
-  });
-  renderAddProdSelect();
-}
-
-function renderAddProdSelect() {
-  const sel = q('[data-slot="add-prod-select"]');
-  if (!sel) return;
-  const added = new Set((state.orgVersions || []).map(v => v.name));
-  const orgField = state.currentForm && state.currentForm.fields.org;
-  const org = getOrg(orgField ? orgField.value : "");
-  const full = getOrgVersions(org);
-  sel.innerHTML = "";
-  const def = document.createElement("option");
-  def.value = ""; def.textContent = "Выберите продукт из справочника"; sel.appendChild(def);
-  for (const p of full) {
-    if (!added.has(p.name)) {
-      const opt = document.createElement("option");
-      opt.value = p.name; opt.textContent = p.name + " " + p.ver; sel.appendChild(opt);
-    }
-  }
-  const btn = q('[data-action="add-prod"]');
-  if (btn) btn.disabled = (sel.options.length <= 1);
-}
-
-function addProductToCard() {
-  const sel = q('[data-slot="add-prod-select"]');
-  if (!sel) return;
-  const name = sel.value; if (!name) return;
-  const orgField = state.currentForm && state.currentForm.fields.org;
-  const org = getOrg(orgField ? orgField.value : "");
-  const full = getOrgVersions(org);
-  const p = full.find(x => x.name === name);
-  if (!p || state.orgVersions.some(v => v.name === p.name)) return;
-  state.orgVersions.push({ id: Date.now(), name: p.name, ver: p.ver });
-  renderVerList();
-  validateCurrentForm();
 }
 
 // ============ Submits ============
@@ -869,7 +776,7 @@ function startLevel(n) {
   if (lvl.intro) {
     const intro = DataStore.getIntro(lvl.intro);
     if (!intro) {
-      console.warn("[Ludus] Unknown intro:", lvl.intro);
+      console.warn("[service-desk] Unknown intro:", lvl.intro);
     } else {
       const modal = document.getElementById("modal-intro");
       modal.querySelector("[data-intro-title]").textContent = intro.title;

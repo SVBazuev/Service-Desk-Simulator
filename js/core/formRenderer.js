@@ -113,7 +113,7 @@ var FormRenderer = {
         }
         const lbl = document.createElement('label');
         lbl.style.cssText = 'display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:4px;';
-        lbl.innerHTML = `<input type="checkbox" value="${val}" class="l3-prob-inc-check"> <span>${label}</span>`;
+        lbl.innerHTML = `<input type="checkbox" value="${val}"> <span>${label}</span>`;
         list.appendChild(lbl);
       });
       wrap.appendChild(list);
@@ -121,7 +121,7 @@ var FormRenderer = {
       return wrap;
     }
 
-    // 3. versions — рендерится приложением отдельно
+    // 3. versions — rendered separately by the application
     if (field.type === 'versions') return null;
 
     // 4. text / textarea / select
@@ -194,7 +194,7 @@ var FormRenderer = {
           const list = registry.slots[field.id];
           if (list) data[field.id] = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(x => x.value);
         } else if (field.type === 'versions') {
-          // skip — заполняется приложением отдельно
+          // skip — populated separately by the application
         } else {
           const el = registry.fields[field.id];
           if (el) data[field.id] = el.value;
@@ -221,7 +221,7 @@ var FormRenderer = {
         const val = formData[field.id];
         if (!val || val.length === 0) { missing.push(field.label); ok = false; }
       } else if (field.type === 'versions') {
-        // versions проверяются в extraCheck
+        // versions checked in extraCheck
       } else {
         const val = formData[field.id];
         if (!val || (typeof val === 'string' && val.trim() === '')) { missing.push(field.label); ok = false; }

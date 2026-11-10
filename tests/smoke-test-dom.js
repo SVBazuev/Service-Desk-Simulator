@@ -18,6 +18,10 @@ const jsFiles = [
   "js/core/progressStore.js",
   "js/utils.js",
   "js/core/templateRenderer.js",
+  "js/core/extensions.js",
+  "js/service-desk/panels.js",
+  "js/service-desk/workflows.js",
+  "js/service-desk/validators.js",
   "js/app.js",
   "js/autotests.js"
 ];
