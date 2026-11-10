@@ -264,6 +264,72 @@ async function runTest() {
     }
     console.log("G.1b middleware: audit log populated — OK");
 
+    // G.1c: pluggable ProgressStore — mock overrides default
+    const __progressCalls__ = [];
+    sandbox.__progressCalls__ = __progressCalls__;
+
+    ev(`
+      Extension.setProgressStore({
+        load: (l) => { globalThis.__progressCalls__.push(['load', l]); return null; },
+        save: (l, s) => { globalThis.__progressCalls__.push(['save', l, !!(s && s.level === l)]); },
+        reset: () => { globalThis.__progressCalls__.push(['reset']); },
+        getSummary: () => {
+          globalThis.__progressCalls__.push(['getSummary']);
+          return { level1: null, level2: null, level3: null };
+        }
+      });
+    `);
+
+    // Contract validation: empty store must throw
+    try {
+      ev("Extension.setProgressStore({})");
+      err("G.1c: setProgressStore({}) should throw");
+    } catch (e) { /* expected */ }
+
+    try {
+      ev("Extension.setProgressStore({ load: function(){}, save: function(){} })");
+      err("G.1c: setProgressStore missing methods should throw");
+    } catch (e) { /* expected */ }
+
+    // startLevel invokes store.load(level)
+    __progressCalls__.length = 0;
+    ev("startLevel(3)");
+    ev("hideModal('modal-intro')");
+    if (!__progressCalls__.some(c => c[0] === 'load' && c[1] === 3)) {
+      err("G.1c: startLevel(3) didn't call store.load(3)");
+    }
+
+    // submitLevel invokes store.save(level, snapshot with matching level)
+    __progressCalls__.length = 0;
+    ev("openWork('TK-302')");
+    ev("requestEngineerClarify()");
+    applyFields({
+      root: "объем данных, таймаут, индекс",
+      workaround: "0",
+      radical: "0",
+      outcome: "resolved"
+    });
+    ev("submitLevel()");
+    ev("hideModal('modal-reg')");
+    if (!__progressCalls__.some(c => c[0] === 'save' && c[1] === 3 && c[2] === true)) {
+      err("G.1c: submitLevel didn't call store.save(3, snapshot with level=3)");
+    }
+
+    // renderLevelCards invokes store.getSummary()
+    __progressCalls__.length = 0;
+    ev("renderLevelCards()");
+    if (!__progressCalls__.some(c => c[0] === 'getSummary')) {
+      err("G.1c: renderLevelCards didn't call store.getSummary()");
+    }
+
+    // setProgressStore(null) restores the built-in store
+    ev("Extension.setProgressStore(null)");
+    if (ev("Extension.getProgressStore() !== ProgressStore")) {
+      err("G.1c: setProgressStore(null) should restore default ProgressStore");
+    }
+
+    console.log("G.1c progressStore: pluggable store — OK");
+
     // L4 manifest
     const l4Ids = ev("DataStore.getLevels().map(l => l.id)");
     if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {

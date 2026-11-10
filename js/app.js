@@ -43,7 +43,7 @@ function init() {
 
   document.getElementById("btn-level-reset").addEventListener("click", () => {
     if (!confirm("Сбросить весь сохранённый прогресс по всем уровням?")) return;
-    ProgressStore.reset();
+    Extension.getProgressStore().reset();
     resetState();
     renderLevelCards();
   });
@@ -149,7 +149,7 @@ function submitLevel() {
     showSuccess(t.id, "modal-reg");
   }
 
-  ProgressStore.save(level, makeSnapshot());
+  Extension.getProgressStore().save(level, makeSnapshot());
 }
 
 // Backward-compat aliases — used by autotests.js and external callers.
@@ -557,7 +557,7 @@ function showResults(level) {
   }
 
   showScreen("screen-res");
-  ProgressStore.save(level, { ...makeSnapshot(), finishedAt: Date.now() });
+  Extension.getProgressStore().save(level, { ...makeSnapshot(), finishedAt: Date.now() });
 }
 
 function restart() {
@@ -746,7 +746,7 @@ function applySnapshot(snap) {
 }
 
 function renderLevelCards() {
-  const summary = ProgressStore.getSummary();
+  const summary = Extension.getProgressStore().getSummary();
   const wrap = document.getElementById("level-cards");
   wrap.innerHTML = "";
   for (const lvl of DataStore.getLevels()) {
@@ -772,7 +772,7 @@ function renderLevelCards() {
 function startLevel(n) {
   resetState();
   state.level = n;
-  const saved = ProgressStore.load(n);
+  const saved = Extension.getProgressStore().load(n);
   if (saved) applySnapshot(saved);
 
   const lvl = DataStore.getLevel(n);
