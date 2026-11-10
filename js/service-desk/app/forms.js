@@ -1,9 +1,18 @@
 /**
  * forms.js — form population, cascade handlers, per-field side effects,
- * and clarify helpers. Uses FormRenderer + registry from state.currentForm.
+ * and clarify helpers.
  */
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { FormRenderer } from "../../core/formRenderer.js";
+import {
+  q, fillSelect,
+  getOrg, getContactsByOrg, getCatList, getSubList, getOrgVersions, getTicket
+} from "../../utils.js";
+import { renderVerList, updateAutoCalc } from "../workflows.js";
+import { PROBLEMS } from "../../data-bundle.js";
 
-function populateSelects(registry, t, workflow) {
+export function populateSelects(registry, t, workflow) {
   const f = registry.fields;
 
   if (f.org) fillSelect(f.org, DataStore.getOrgs().map(o => ({ value: o.id, label: o.name })));
@@ -34,7 +43,7 @@ function populateSelects(registry, t, workflow) {
   if (f.linkedProb) fillSelect(f.linkedProb, [{ value: "", label: "Выберите проблему..." }]);
 }
 
-function prefillDispatcher(registry, t) {
+export function prefillDispatcher(registry, t) {
   const f = registry.fields;
 
   if (f.org) f.org.value = t.orgId;
@@ -69,8 +78,8 @@ function prefillDispatcher(registry, t) {
   if (f.comment) f.comment.value = "";
 }
 
-function handleFieldChange(fieldId, value, t, workflow) {
-  const registry = state.currentForm;
+export function handleFieldChange(fieldId, value, t, workflow) {
+  const registry = State.currentForm;
   if (!registry) return;
   const f = registry.fields;
 
@@ -81,7 +90,7 @@ function handleFieldChange(fieldId, value, t, workflow) {
     fillSelect(f.prod, org ? org.products.map(p => ({ value: p.name, label: p.name })) : []);
     if (f.cat) fillSelect(f.cat, []);
     if (f.sub) fillSelect(f.sub, []);
-    state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
+    State.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
     renderVerList();
   }
 
@@ -116,7 +125,7 @@ function handleFieldChange(fieldId, value, t, workflow) {
   }
 }
 
-function updateLinkedProbOptions(registry, outcome) {
+export function updateLinkedProbOptions(registry, outcome) {
   const sel = registry.fields.linkedProb;
   if (!sel) return;
   let opts = [{ value: "", label: "Выберите проблему..." }];
@@ -130,18 +139,18 @@ function updateLinkedProbOptions(registry, outcome) {
   fillSelect(sel, opts);
 }
 
-function validateCurrentForm() {
-  if (!state.currentForm) return;
-  const schema = DataStore.getSchema(state.level);
-  const wf = DataStore.getLevelWorkflow(state.level);
-  FormRenderer.validate(state.currentForm, schema, () => {
+export function validateCurrentForm() {
+  if (!State.currentForm) return;
+  const schema = DataStore.getSchema(State.level);
+  const wf = DataStore.getLevelWorkflow(State.level);
+  FormRenderer.validate(State.currentForm, schema, () => {
     if (wf === "engineer") return true;
-    return state.orgVersions && state.orgVersions.length > 0;
+    return State.orgVersions && State.orgVersions.length > 0;
   });
 }
 
-function requestClarification() {
-  const t = getTicket(state.currentId);
+export function requestClarification() {
+  const t = getTicket(State.currentId);
   if (!t || !t.clarification) return;
   const text = q('[data-slot="clarify-text"]');
   const block = q('[data-slot="clarify-block"]');
@@ -151,11 +160,11 @@ function requestClarification() {
   if (btn) btn.style.display = "none";
 }
 
-function requestEngineerClarify() {
-  const t = getTicket(state.currentId);
+export function requestEngineerClarify() {
+  const t = getTicket(State.currentId);
   if (!t || !t.clarifications || t.clarifications.length === 0) return;
-  state.engineer.requestedClarify = true;
-  state.engineer.clarified = true;
+  State.engineer.requestedClarify = true;
+  State.engineer.clarified = true;
   const text = q('[data-slot="clarify-text"]');
   const block = q('[data-slot="clarify-block"]');
   if (text) text.textContent = t.clarifications[0].answer;

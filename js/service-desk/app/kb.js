@@ -1,10 +1,12 @@
 /**
  * kb.js — in-app knowledge base: articles, menu, and the KB modal.
  */
+import { showModal } from "../../utils.js";
+import { KB_L3 } from "../../data-bundle.js";
 
-var KB = [];
+let KB = [];
 
-function bootstrapKb() {
+export function bootstrapKb() {
   KB = [
     { title: "О компании «Про.Софт»", html: `<h3>О компании «Про.Софт»</h3><p><b>ООО «Про.Софт»</b> — российский разработчик корпоративного программного обеспечения.</p>` },
     { title: "Продукты компании", html: `<h3>Продукты</h3><table><tr><th>Продукт</th><th>Назначение</th></tr><tr><td>Про.Документы</td><td>СЭД: договоры, согласование документов, карточки контрагентов, маршруты.</td></tr><tr><td>Про.Продажи</td><td>CRM: клиенты, сделки, воронка, аналитика.</td></tr><tr><td>Про.Закупки</td><td>SRM: заявки, каталог, договоры закупок.</td></tr></table>` },
@@ -31,7 +33,7 @@ function bootstrapKb() {
   ];
 }
 
-function buildKb() {
+export function buildKb() {
   const menu = document.getElementById("kb-menu");
   const content = document.getElementById("kb-content");
   menu.innerHTML = "";
@@ -49,11 +51,11 @@ function buildKb() {
   content.innerHTML = KB[0].html;
 }
 
-function openKb() { showModal("modal-kb"); }
-function switchKbTab(title) {
+export function openKb() { showModal("modal-kb"); }
+export function switchKbTab(title) {
   const buttons = document.querySelectorAll(".kb-menu-item");
   for (const btn of buttons) {
     if (btn.textContent === title) { btn.click(); break; }
   }
 }
-function goToKbTab(title) { openKb(); switchKbTab(title); }
+export function goToKbTab(title) { openKb(); switchKbTab(title); }

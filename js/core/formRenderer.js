@@ -1,7 +1,10 @@
 /**
  * formRenderer.js — генератор форм и Component Registry (dynamic anchors).
  */
-var FormRenderer = {
+import { DataStore } from "./dataStore.js";
+import { fillSelect } from "../utils.js";
+
+export const FormRenderer = {
   currentContext: null,
   currentRegistry: null,
 
@@ -63,7 +66,6 @@ var FormRenderer = {
   },
 
   renderField: function(field, registry) {
-    // 1. composite
     if (field.type === 'composite') {
       const fieldset = document.createElement('fieldset');
       fieldset.className = 'composite-field';
@@ -80,7 +82,6 @@ var FormRenderer = {
       return fieldset;
     }
 
-    // 2. checkboxGroup
     if (field.type === 'checkboxGroup') {
       const wrap = document.createElement('div');
       wrap.className = 'form-field full';
@@ -121,10 +122,8 @@ var FormRenderer = {
       return wrap;
     }
 
-    // 3. versions — rendered separately by the application
     if (field.type === 'versions') return null;
 
-    // 4. text / textarea / select
     const id = this._uid(field.id);
     const label = document.createElement('label');
     label.className = 'form-field' + (field.type === 'textarea' ? ' full' : '');

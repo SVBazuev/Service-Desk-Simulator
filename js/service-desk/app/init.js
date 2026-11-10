@@ -1,11 +1,20 @@
 /**
  * init.js — application bootstrap, workload snapshots, reset, restart.
- * Declares the app-wide `state` alias used by every other app module
- * and by autotests.js.
+ * Imports side-effect modules (validators, middleware) so their
+ * Extension registrations run at startup.
  */
-const state = State;
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { Extension } from "../../core/extensions.js";
+import { showScreen, hideModal } from "../../utils.js";
+import "../validators.js";
+import "../middleware.js";
+import { renderLevelCards } from "./levels.js";
+import { onWorkClick, goBackFromWork, showResults } from "./router.js";
+import { openOrgList, openEmpList, openProblems } from "./reference.js";
+import { bootstrapKb, buildKb, openKb } from "./kb.js";
 
-var INITIAL_WORKLOADS = {};
+let INITIAL_WORKLOADS = {};
 
 function bootstrapWorkloads() {
   INITIAL_WORKLOADS = Object.fromEntries(
@@ -24,7 +33,7 @@ function resetWorkloads() {
 }
 
 function resetState() {
-  state.reset();
+  State.reset();
   resetWorkloads();
 }
 
@@ -33,7 +42,7 @@ function restart() {
   showScreen("screen-start");
 }
 
-function init() {
+export function init() {
   bootstrapWorkloads();
   bootstrapKb();
 
@@ -69,7 +78,7 @@ function init() {
 
   document.querySelectorAll("[id^='btn-org-list']").forEach(b => b.addEventListener("click", openOrgList));
   document.querySelectorAll("[id^='btn-emp-list']").forEach(b => b.addEventListener("click", () =>
-    openEmpList(DataStore.getLevelWorkflow(state.level) === "engineer" ? DataStore.getEmployeesL3() : DataStore.getEmployees())
+    openEmpList(DataStore.getLevelWorkflow(State.level) === "engineer" ? DataStore.getEmployeesL3() : DataStore.getEmployees())
   ));
   document.querySelectorAll("[id^='btn-kb']").forEach(b => b.addEventListener("click", openKb));
   document.querySelectorAll("[id^='btn-problems']").forEach(b => b.addEventListener("click", openProblems));
@@ -87,7 +96,9 @@ function init() {
   });
 
   const queueFinishBtn = document.querySelector("[data-queue-finish]");
-  if (queueFinishBtn) queueFinishBtn.addEventListener("click", () => showResults(state.level));
+  if (queueFinishBtn) queueFinishBtn.addEventListener("click", () => showResults(State.level));
 
   buildKb();
 }
+
+export { resetState, restart };

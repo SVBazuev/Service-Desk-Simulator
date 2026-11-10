@@ -1,9 +1,9 @@
 /**
  * state.js — centralized application state.
- * Domain slots (orgVersions, engineer) are registered by the
+ * Domain slots (orgVersions, engineer, submitLog) are registered by the
  * application via Extension.registerSlot.
  */
-var State = {
+export const State = {
   level: 1,
   currentId: null,
   currentForm: null,
@@ -32,7 +32,6 @@ var State = {
     return this.resultsByLevel[level];
   },
 
-  // Backward-compat accessors (used by autotests.js)
   get results()   { return this.getResults(1); },
   set results(v)  { this.resultsByLevel[1] = v; },
   get resultsL2() { return this.getResults(2); },

@@ -1,9 +1,9 @@
 /**
  * middleware.js — application-side middlewares registered via the
- * Extension API. Demonstrates the submit hook: it records each
- * submit into `State.submitLog` for later inspection (telemetry,
- * debugging, backend sync in a future multiplayer commit).
+ * Extension API.
  */
+import { Extension } from "../core/extensions.js";
+import { State } from "../core/state.js";
 
 Extension.registerSlot("submitLog", []);
 

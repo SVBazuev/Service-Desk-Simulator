@@ -1,29 +1,34 @@
 /**
  * submits.js — single submit pipeline for all workflows.
- * Aliases register / assignL2 / submitEngineer are gone in G.1d;
- * autotests.js calls submitLevel() directly.
  */
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { FormRenderer } from "../../core/formRenderer.js";
+import { Validator } from "../../core/validator.js";
+import { Extension } from "../../core/extensions.js";
+import { q, showModal, getTicket } from "../../utils.js";
+import { makeSnapshot } from "./levels.js";
 
-function submitLevel() {
-  const t = getTicket(state.currentId);
-  if (!t || !state.currentForm) return;
+export function submitLevel() {
+  const t = getTicket(State.currentId);
+  if (!t || !State.currentForm) return;
 
-  const level = state.level;
+  const level = State.level;
   const workflow = DataStore.getLevelWorkflow(level);
   const schema = DataStore.getSchema(level);
-  const formData = FormRenderer.getFormData(state.currentForm, schema);
+  const formData = FormRenderer.getFormData(State.currentForm, schema);
 
   if (workflow === "engineer") {
     const dupSel = q('[data-slot="dup-select"]');
     formData.dupVal = dupSel ? dupSel.value : "";
   } else {
-    formData.vers = (state.orgVersions || []).map(v => v.name + " " + v.ver);
+    formData.vers = (State.orgVersions || []).map(v => v.name + " " + v.ver);
   }
 
   const ctx = { level, workflow, ticket: t, schema, formData, state: State };
   const result = Extension.runMiddleware(ctx, (c) => {
     const r = Validator.validate(c.schema, c.ticket, c.formData);
-    state.getResults(c.level)[c.ticket.id] = r;
+    State.getResults(c.level)[c.ticket.id] = r;
     return r;
   });
 
@@ -38,8 +43,8 @@ function submitLevel() {
   } else if (workflow === "engineer") {
     if (formData.outcome === "new_problem" && result.ok && t.problem) {
       const record = t.problem.record;
-      if (record && !state.createdProblems.includes(record)) {
-        state.createdProblems.push(record);
+      if (record && !State.createdProblems.includes(record)) {
+        State.createdProblems.push(record);
       }
     }
     showSuccess(t.id, "modal-reg");
@@ -48,7 +53,7 @@ function submitLevel() {
   Extension.getProgressStore().save(level, makeSnapshot());
 }
 
-function showSuccess(ticketId, modalId) {
+export function showSuccess(ticketId, modalId) {
   const idEl = document.getElementById(modalId === "modal-assign" ? "assign-ok-id" : "reg-ok-id");
   if (idEl) idEl.textContent = ticketId;
   showModal(modalId);

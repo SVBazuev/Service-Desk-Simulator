@@ -2,9 +2,11 @@
  * validators.js — Service Desk custom validation rules
  * registered via Extension API.
  */
+import { Extension } from "../core/extensions.js";
+import { DataStore } from "../core/dataStore.js";
+import { getOrg } from "../utils.js";
+import { PROBLEMS } from "../data-bundle.js";
 
-// Field formatters for "eq" rule — map internal ids to display strings.
-// Return either a string (display only) or { display, explain } object.
 Extension.registerFieldFormatter("org", function(value, ticket) {
   return {
     display: getOrg(value)?.name || value,
@@ -14,7 +16,7 @@ Extension.registerFieldFormatter("org", function(value, ticket) {
 
 Extension.registerFieldFormatter("cont", function(value, ticket) {
   return {
-    display: CONTACTS.find(c => c.id === value)?.name || value,
+    display: DataStore.getContacts().find(c => c.id === value)?.name || value,
     explain: "Контактное лицо должно соответствовать обращению."
   };
 });

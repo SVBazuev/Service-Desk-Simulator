@@ -2,8 +2,12 @@
  * reference.js — directories (organizations, employees, contacts)
  * and the Problem Records registry modal.
  */
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { showModal, getContactsByOrg } from "../../utils.js";
+import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../data-bundle.js";
 
-function openOrgList() {
+export function openOrgList() {
   const tbody = document.getElementById("org-list-body");
   tbody.innerHTML = "";
   for (const org of DataStore.getOrgs()) {
@@ -15,7 +19,7 @@ function openOrgList() {
   showModal("modal-org-list");
 }
 
-function openEmpList(list) {
+export function openEmpList(list) {
   list = list || DataStore.getEmployees();
   const tbody = document.getElementById("emp-list-body");
   tbody.innerHTML = "";
@@ -29,7 +33,7 @@ function openEmpList(list) {
   showModal("modal-emp-list");
 }
 
-function openContacts(orgId, orgName) {
+export function openContacts(orgId, orgName) {
   document.getElementById("contacts-org-name").textContent = orgName;
   const tbody = document.getElementById("contacts-list-body");
   tbody.innerHTML = "";
@@ -46,10 +50,10 @@ function openContacts(orgId, orgName) {
   showModal("modal-contacts");
 }
 
-function openProblems() {
+export function openProblems() {
   const body = document.getElementById("problems-body");
   body.innerHTML = "";
-  const resolvedIds = Object.keys(state.getResults(3)).filter(id => state.getResults(3)[id].registered);
+  const resolvedIds = Object.keys(State.getResults(3)).filter(id => State.getResults(3)[id].registered);
 
   if (resolvedIds.length === 0) {
     body.innerHTML = "<div style='color:var(--sub);font-size:14px;'>Пока нет зарегистрированных Problem Records. Они появляются, когда вы закрываете обращение с исходом «Known Error».</div>";
@@ -57,7 +61,7 @@ function openProblems() {
 
   let displayProblems = [...PROBLEMS];
 
-  if (state.createdProblems && state.createdProblems.includes("PRB-3")) {
+  if (State.createdProblems && State.createdProblems.includes("PRB-3")) {
     displayProblems.push({
       id: "PRB-3",
       status: "known_error",

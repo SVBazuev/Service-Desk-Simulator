@@ -1,24 +1,21 @@
 /**
  * validator.js — universal answer verification module.
  */
-var Validator = {
+export const Validator = {
   _rules: {},
   _fieldFormatters: {},
 
   registerRule: function(name, fn) {
     this._rules[name] = fn;
   },
-
   registerFieldFormatter: function(fieldId, fn) {
     this._fieldFormatters[fieldId] = fn;
   },
 
-  // Safe value getter by path (e.g. "etalon.imp")
   getExpectedValue: function(ticket, path) {
     return path.split('.').reduce((acc, part) => acc && acc[part], ticket);
   },
 
-  // Universal validation method
   validate: function(schema, ticket, formData) {
     const errs = [];
     const comparison = [];
@@ -36,7 +33,6 @@ var Validator = {
       const val = formData[field.id];
       const rule = field.validate.rule;
 
-      // Custom rules registered via Extension.registerValidator.
       const customFn = this._rules[rule];
       if (customFn) {
         customFn.call(this, ticket, formData, comparison, errs);

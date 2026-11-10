@@ -1,11 +1,28 @@
 /**
  * router.js — navigation between screens, queue rendering, work screen
- * mounting, and final results. Delegates form submit to submits.js and
- * form population to forms.js; the module graph is resolved via globals
- * (classic scripts share the global scope; ESM replaces this in G.1e).
+ * mounting, and final results.
  */
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { TemplateRenderer } from "../../core/templateRenderer.js";
+import { FormRenderer } from "../../core/formRenderer.js";
+import { Extension } from "../../core/extensions.js";
+import {
+  q, showScreen, escapeHtml,
+  getOrg, getTicket, getTickets, getResults
+} from "../../utils.js";
+import { submitLevel } from "./submits.js";
+import {
+  handleFieldChange, validateCurrentForm,
+  populateSelects, prefillDispatcher,
+  requestClarification, requestEngineerClarify
+} from "./forms.js";
+import { renderVerList, addProductToCard, updateAutoCalc } from "../workflows.js";
+import { switchDiagTab } from "../panels.js";
+import { makeSnapshot } from "./levels.js";
+import { CONTACTS } from "../../data-bundle.js";
 
-function onWorkClick(e) {
+export function onWorkClick(e) {
   const t = e.target.closest('[data-action]');
   if (!t) return;
   const action = t.dataset.action;
@@ -17,19 +34,19 @@ function onWorkClick(e) {
   else if (action === 'diag-tab') switchDiagTab(t.dataset.tabId);
 }
 
-function goBackFromWork() {
-  state.currentId = null;
-  state.currentForm = null;
-  if (DataStore.getLevelWorkflow(state.level) === 'engineer') {
-    state.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
+export function goBackFromWork() {
+  State.currentId = null;
+  State.currentForm = null;
+  if (DataStore.getLevelWorkflow(State.level) === 'engineer') {
+    State.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
   }
   renderQueue();
-  const lvl = DataStore.getLevel(state.level);
+  const lvl = DataStore.getLevel(State.level);
   if (lvl && lvl.queue) showScreen("screen-queue");
 }
 
-function renderQueue() {
-  const lvl = DataStore.getLevel(state.level);
+export function renderQueue() {
+  const lvl = DataStore.getLevel(State.level);
   if (!lvl || !lvl.queue) return;
   const section = document.getElementById("screen-queue");
   if (!section) return;
@@ -90,17 +107,17 @@ function renderQueue() {
   if (probBtn) probBtn.style.display = lvl.queue.showProblems ? "" : "none";
 }
 
-function openWork(id) {
+export function openWork(id) {
   const t = getTicket(id);
   if (!t) return;
-  state.currentId = id;
+  State.currentId = id;
 
-  const lvl = DataStore.getLevel(state.level);
+  const lvl = DataStore.getLevel(State.level);
   const workflow = lvl.workflow;
-  const schema = DataStore.getSchema(state.level);
+  const schema = DataStore.getSchema(State.level);
 
   if (workflow === "engineer") {
-    state.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
+    State.engineer = { requestedClarify: false, clarified: false, diagOpen: null };
   }
 
   q('[data-slot="work-title"]').textContent = lvl.workTitle || "Рабочее место";
@@ -118,7 +135,7 @@ function openWork(id) {
   grid.className = "work-grid" + (result.withExtra ? " with-extra" : "");
   result.panels.forEach(p => grid.appendChild(p));
 
-  state.currentForm = result.registry;
+  State.currentForm = result.registry;
 
   populateSelects(result.registry, t, workflow);
 
@@ -134,9 +151,9 @@ function openWork(id) {
   if (workflow !== "engineer") {
     if (workflow === "dispatcher") {
       const org = getOrg(t.orgId);
-      state.orgVersions = getOrgVersions(org).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
+      State.orgVersions = (org && org.products ? org.products : []).map((p, idx) => ({ id: idx + Date.now(), name: p.name, ver: p.ver }));
     } else {
-      state.orgVersions = [];
+      State.orgVersions = [];
     }
     renderVerList();
   }
@@ -147,11 +164,11 @@ function openWork(id) {
   validateCurrentForm();
 }
 
-function showResults(level) {
+export function showResults(level) {
   const tbody = document.querySelector("#res-table tbody");
   tbody.innerHTML = "";
   const tickets = DataStore.getTickets(level);
-  const results = state.getResults(level);
+  const results = State.getResults(level);
   const workflow = DataStore.getLevelWorkflow(level);
   document.getElementById("res-title").textContent = `Итоги работы (Уровень ${level})`;
 

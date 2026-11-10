@@ -1,4 +1,4 @@
-var ProgressStore = {
+export const ProgressStore = {
   KEY: "sds:progress:v1",
 
   readAll: function() {

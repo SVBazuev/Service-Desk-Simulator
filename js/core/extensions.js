@@ -1,10 +1,13 @@
 /**
  * extensions.js — facade for registering application extensions.
- * All app-specific templates, widgets, validators, state slots,
- * middleware, and the progress store are registered through this
- * single API. In G.1e this object becomes the single `export default`.
+ * G.1e: single named export used by service-desk/* modules.
  */
-var Extension = {
+import { TemplateRenderer } from "./templateRenderer.js";
+import { Validator } from "./validator.js";
+import { State } from "./state.js";
+import { ProgressStore } from "./progressStore.js";
+
+export const Extension = {
   _middlewares: [],
   _progressStore: null,
 
@@ -30,15 +33,6 @@ var Extension = {
     Validator.registerFieldFormatter(fieldId, fn);
   },
 
-  /**
-   * Register a middleware around the submit pipeline.
-   * Signature: (ctx, next) => result
-   *   - ctx: { level, workflow, ticket, schema, formData, state }
-   *   - next: () => result  — runs the rest of the chain
-   * Middleware may mutate ctx.formData before calling next(),
-   * observe/wrap the result after next(), or abort by not calling next()
-   * (submit then resolves to undefined and nothing is persisted).
-   */
   use: function(fn) {
     if (typeof fn !== "function") {
       throw new Error("Extension.use: middleware must be a function");
@@ -55,14 +49,6 @@ var Extension = {
     return dispatch(0);
   },
 
-  /**
-   * Replace the default progress store. `store` must implement:
-   *   load(level)        → snapshot | null
-   *   save(level, snap)  → void
-   *   reset()            → void
-   *   getSummary()       → { level1?, level2?, … }
-   * Pass `null` to restore the built-in localStorage-based store.
-   */
   setProgressStore: function(store) {
     if (store === null || store === undefined) {
       this._progressStore = null;
@@ -80,10 +66,6 @@ var Extension = {
     this._progressStore = store;
   },
 
-  /**
-   * Returns the registered store, or the built-in ProgressStore
-   * (localStorage) when none was registered.
-   */
   getProgressStore: function() {
     return this._progressStore || ProgressStore;
   }

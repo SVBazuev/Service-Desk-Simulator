@@ -1,368 +1,294 @@
-﻿const fs = require("fs");
-const vm = require("vm");
-const path = require("path");
-const { JSDOM } = require("jsdom");
+﻿import { JSDOM } from "jsdom";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, "..");
+
 const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://localhost/" });
-const { window } = dom;
-const doc = window.document;
+const dom = new JSDOM(html, { url: "http://localhost/" });
 
-const jsFiles = [
-  "js/data-bundle.js",
-  "js/core/state.js",
-  "js/core/dataStore.js",
-  "js/core/formRenderer.js",
-  "js/core/validator.js",
-  "js/core/progressStore.js",
-  "js/utils.js",
-  "js/core/templateRenderer.js",
-  "js/core/extensions.js",
-  "js/service-desk/panels.js",
-  "js/service-desk/workflows.js",
-  "js/service-desk/validators.js",
-  "js/service-desk/middleware.js",
-  "js/service-desk/app/init.js",
-  "js/service-desk/app/router.js",
-  "js/service-desk/app/submits.js",
-  "js/service-desk/app/forms.js",
-  "js/service-desk/app/levels.js",
-  "js/service-desk/app/reference.js",
-  "js/service-desk/app/kb.js",
-  "js/app.js",
-  "js/autotests.js"
-];
-
-const allJs = jsFiles
-  .map(f => fs.readFileSync(path.join(ROOT, f), "utf8"))
-  .join("\n;\n");
-
-const sandbox = {
-  window,
-  document: doc,
-  navigator: window.navigator,
-  location: window.location,
-  localStorage: {
-    store: {},
-    getItem(key) { return this.store[key] || null; },
-    setItem(key, value) { this.store[key] = String(value); },
-    removeItem(key) { delete this.store[key]; },
-    clear() { this.store = {}; }
-  },
-  alert: () => {},
-  confirm: () => true,
-  prompt: () => "",
-  console,
-  setTimeout,
-  clearTimeout,
-  setInterval,
-  clearInterval,
-  JSON,
-  Math,
-  Date,
-  Set,
-  Map,
-  Array,
-  Object,
-  String,
-  Number,
-  Boolean,
-  RegExp,
-  Error,
-  parseInt,
-  parseFloat,
-  isNaN,
-  Event: window.Event,
-  CustomEvent: window.CustomEvent
+global.window = dom.window;
+global.document = dom.window.document;
+global.navigator = dom.window.navigator;
+global.location = dom.window.location;
+global.Event = dom.window.Event;
+global.CustomEvent = dom.window.CustomEvent;
+global.localStorage = {
+  store: {},
+  getItem(key) { return this.store[key] || null; },
+  setItem(key, value) { this.store[key] = String(value); },
+  removeItem(key) { delete this.store[key]; },
+  clear() { this.store = {}; }
 };
-sandbox.globalThis = sandbox;
 
-vm.createContext(sandbox);
-vm.runInContext(allJs, sandbox, { filename: "game.js" });
-
-const ev = (code) => vm.runInContext(code, sandbox);
+const { State } = await import("../js/core/state.js");
+const { ProgressStore } = await import("../js/core/progressStore.js");
+const { Extension } = await import("../js/core/extensions.js");
+const { init } = await import("../js/service-desk/app/init.js");
+const { submitLevel } = await import("../js/service-desk/app/submits.js");
+const { openWork, renderQueue } = await import("../js/service-desk/app/router.js");
+const { requestEngineerClarify, validateCurrentForm } = await import("../js/service-desk/app/forms.js");
+const { runAutotests, runAutotestsL2, runAutotestsEngineer } = await import("../js/autotests.js");
+const { hideModal } = await import("../js/utils.js");
+const bundle = await import("../js/data-bundle.js");
+const { DataStore } = await import("../js/core/dataStore.js");
 
 let fail = 0;
 const err = (m) => { console.error("FAIL:", m); fail++; };
 
-// Хелпер на стороне хоста: выполнить набор field-values в Registry
 function applyFields(fields) {
-  const json = JSON.stringify(fields);
-  ev(`(function(){
-    const data = ${json};
-    for (const id of Object.keys(data)) {
-      const el = state.currentForm && state.currentForm.fields[id];
-      if (!el) continue;
-      el.value = data[id];
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  })();`);
-}
-
-function checkIncidents(all) {
-  ev(`(function(){
-    const list = state.currentForm && state.currentForm.slots && state.currentForm.slots.incidents;
-    if (!list) return;
-    list.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = ${all ? 'true' : 'false'});
-  })();`);
-}
-
-function setDup(value) {
-  ev(`(function(){
-    const el = document.querySelector('[data-slot="dup-select"]');
-    if (el) el.value = ${JSON.stringify(value)};
-  })();`);
-}
-
-async function runTest() {
-  try {
-    ev("init()");
-
-    doc.getElementById("btn-to-level-select").click();
-    doc.querySelector('[data-level="3"]').click();
-    ev("hideModal('modal-intro')");
-
-    if (!doc.getElementById("screen-queue").classList.contains("active")) {
-      err("не открыт экран очереди L3");
-    }
-
-    const tickets = ev("TICKETS_L3");
-
-    // Прогон всех тикетов L3
-    for (const t of tickets) {
-      ev(`openWork('${t.id}')`);
-      ev("requestEngineerClarify()");
-
-      applyFields({
-        root: "причина: " + t.rootKeywords.join(", "),
-        workaround: String(t.workaroundCorrect),
-        radical: String(t.radicalCorrect),
-        outcome: t.outcome.correct
-      });
-
-      if (t.problem) {
-        checkIncidents(true);
-        const rfcText = (ev(`(PROBLEMS.find(p => p.id === ${JSON.stringify(t.problem.record)}) || {}).rfc`))
-          || ("исправить: " + t.rootKeywords.join(", "));
-        applyFields({
-          impact: t.problem.impact,
-          prob: t.problem.prob,
-          owner: t.problem.owner,
-          method: t.problem.method,
-          rfc: rfcText
-        });
-      } else if (t.linkedProblemId) {
-        applyFields({ linkedProb: t.linkedProblemId });
-      }
-
-      if (t.duplicateOf) setDup(t.duplicateOf);
-
-      ev("validateCurrentForm()");
-      ev("submitLevel()");
-      ev("hideModal('modal-reg')");
-
-      const res = ev(`state.resultsEngineer['${t.id}']`);
-      if (!res) {
-        err(t.id + ": результат не сохранён");
-      } else if (!res.ok) {
-        err(t.id + ": эталонный ответ не прошёл. Ошибки: " + res.errs.join(", "));
-        for (const c of res.comparison) {
-          if (c.isError) console.error("   - " + c.field + ": " + c.value + " | нужно: " + c.expected);
-        }
-      }
-    }
-
-    // Счётчик
-    ev("renderQueue()");
-    const done = doc.querySelector("[data-queue-done]").textContent;
-    if (done !== String(tickets.length)) {
-      err(`счётчик очереди: ${done} вместо ${tickets.length}`);
-    }
-
-    // Итоги
-    doc.querySelector("[data-queue-finish]").click();
-    if (!doc.getElementById("screen-res").classList.contains("active")) {
-      err("не открыт экран результатов");
-    }
-    const rows = doc.querySelectorAll("#res-table tbody tr").length;
-    if (rows !== tickets.length) {
-      err(`в итоговой таблице строк: ${rows} вместо ${tickets.length}`);
-    }
-    const okCount = doc.querySelectorAll("#res-table .tag.ok").length;
-    console.log(`INFO: 'Успех' в итогах: ${okCount} / ${tickets.length}`);
-
-    // Проблемы
-    ev("openProblems()");
-    const probCards = doc.querySelectorAll("#problems-body > div").length;
-    if (probCards !== 3) {
-      err(`карточек проблем: ${probCards} вместо 3`);
-    }
-    ev("hideModal('modal-problems')");
-
-    // Негативный тест L3
-    ev("state.level = 3");
-    ev(`openWork('TK-302')`);
-    applyFields({
-      root: "неизвестно",
-      workaround: "1",
-      radical: "1",
-      outcome: "new_problem"
-    });
-    ev("validateCurrentForm()");
-    ev("submitLevel()");
-    ev("hideModal('modal-reg')");
-
-    const res2 = ev(`state.resultsEngineer['TK-302']`);
-    if (!res2 || res2.errs.length < 2) {
-      err(`негативный тест: сломанный ответ не пойман (errs=${res2 ? res2.errs.length : 0})`);
-    }
-
-    // Встроенные автотесты L3
-    ev("runAutotestsEngineer()");
-    ev("hideModal('modal-autotest')");
-    const atOk = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
-    const atBad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
-    const expectedAutotests = tickets.length * 2;
-    console.log(`Автотесты L3: ${atOk} OK / ${atBad} BAD (ожидалось ${expectedAutotests} OK / 0 BAD)`);
-    if (atBad > 0) err(`автотесты L3 провалились: ${atBad} BAD`);
-
-    // Автотесты L1
-    ev("runAutotests()");
-    ev("hideModal('modal-autotest')");
-    const l1Ok = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
-    const l1Bad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
-    const expectedL1 = ev("TICKETS.length") * 2;
-    console.log(`Автотесты L1: ${l1Ok} OK / ${l1Bad} BAD (ожидалось ${expectedL1} OK / 0 BAD)`);
-    if (l1Bad > 0) err(`автотесты L1 провалились: ${l1Bad} BAD`);
-
-    // Автотесты L2
-    ev("runAutotestsL2()");
-    ev("hideModal('modal-autotest')");
-    const l2Ok = doc.querySelectorAll("#autotest-report-body .tag.ok").length;
-    const l2Bad = doc.querySelectorAll("#autotest-report-body .tag.bad").length;
-    const expectedL2 = ev("TICKETS_L2.length") * 2;
-    console.log(`Автотесты L2: ${l2Ok} OK / ${l2Bad} BAD (ожидалось ${expectedL2} OK / 0 BAD)`);
-    if (l2Bad > 0) err(`автотесты L2 провалились: ${l2Bad} BAD`);
-
-    // G.1b: middleware — audit log grows on every submit
-    ev("state.level = 3");
-    ev("openWork('TK-302')");
-    ev("requestEngineerClarify()");
-    applyFields({
-      root: "объем данных, таймаут, индекс",
-      workaround: "0",
-      radical: "0",
-      outcome: "resolved"
-    });
-    const mwLogBefore = ev("State.submitLog.length");
-    ev("submitLevel()");
-    ev("hideModal('modal-reg')");
-    const mwLogAfter = ev("State.submitLog.length");
-    if (mwLogAfter !== mwLogBefore + 1) {
-      err(`middleware: submitLog ${mwLogBefore} -> ${mwLogAfter} (expected +1)`);
-    }
-    const lastMwLog = ev("State.submitLog[State.submitLog.length - 1]");
-    if (!lastMwLog || lastMwLog.ticketId !== "TK-302") {
-      err(`middleware: last log ticketId=${lastMwLog && lastMwLog.ticketId}, expected TK-302`);
-    }
-    if (lastMwLog.level !== 3 || lastMwLog.workflow !== "engineer") {
-      err(`middleware: level/workflow mismatch: ${lastMwLog.level}/${lastMwLog.workflow}`);
-    }
-    console.log("G.1b middleware: audit log populated — OK");
-
-    // G.1c: pluggable ProgressStore — mock overrides default
-    const __progressCalls__ = [];
-    sandbox.__progressCalls__ = __progressCalls__;
-
-    ev(`
-      Extension.setProgressStore({
-        load: (l) => { globalThis.__progressCalls__.push(['load', l]); return null; },
-        save: (l, s) => { globalThis.__progressCalls__.push(['save', l, !!(s && s.level === l)]); },
-        reset: () => { globalThis.__progressCalls__.push(['reset']); },
-        getSummary: () => {
-          globalThis.__progressCalls__.push(['getSummary']);
-          return { level1: null, level2: null, level3: null };
-        }
-      });
-    `);
-
-    // Contract validation: empty store must throw
-    try {
-      ev("Extension.setProgressStore({})");
-      err("G.1c: setProgressStore({}) should throw");
-    } catch (e) { /* expected */ }
-
-    try {
-      ev("Extension.setProgressStore({ load: function(){}, save: function(){} })");
-      err("G.1c: setProgressStore missing methods should throw");
-    } catch (e) { /* expected */ }
-
-    // startLevel invokes store.load(level)
-    __progressCalls__.length = 0;
-    ev("startLevel(3)");
-    ev("hideModal('modal-intro')");
-    if (!__progressCalls__.some(c => c[0] === 'load' && c[1] === 3)) {
-      err("G.1c: startLevel(3) didn't call store.load(3)");
-    }
-
-    // submitLevel invokes store.save(level, snapshot with matching level)
-    __progressCalls__.length = 0;
-    ev("openWork('TK-302')");
-    ev("requestEngineerClarify()");
-    applyFields({
-      root: "объем данных, таймаут, индекс",
-      workaround: "0",
-      radical: "0",
-      outcome: "resolved"
-    });
-    ev("submitLevel()");
-    ev("hideModal('modal-reg')");
-    if (!__progressCalls__.some(c => c[0] === 'save' && c[1] === 3 && c[2] === true)) {
-      err("G.1c: submitLevel didn't call store.save(3, snapshot with level=3)");
-    }
-
-    // renderLevelCards invokes store.getSummary()
-    __progressCalls__.length = 0;
-    ev("renderLevelCards()");
-    if (!__progressCalls__.some(c => c[0] === 'getSummary')) {
-      err("G.1c: renderLevelCards didn't call store.getSummary()");
-    }
-
-    // setProgressStore(null) restores the built-in store
-    ev("Extension.setProgressStore(null)");
-    if (ev("Extension.getProgressStore() !== ProgressStore")) {
-      err("G.1c: setProgressStore(null) should restore default ProgressStore");
-    }
-
-    console.log("G.1c progressStore: pluggable store — OK");
-
-    // L4 manifest
-    const l4Ids = ev("DataStore.getLevels().map(l => l.id)");
-    if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {
-      err("LEVELS должен содержать уровень 4");
-    }
-    const l4Tickets = ev("DataStore.getTickets(4)");
-    if (!Array.isArray(l4Tickets) || l4Tickets.length !== 1) {
-      err("DataStore.getTickets(4) должен вернуть 1 тикет");
-    }
-    const l4Schema = ev("DataStore.getSchema(4)");
-    if (!l4Schema || !Array.isArray(l4Schema.fields) || l4Schema.fields.length !== 2) {
-      err("DataStore.getSchema(4) должен вернуть {fields: [2 поля]}");
-    }
-    const l4SchemasMap = ev("DataStore.getSchemas()");
-    if (!l4SchemasMap[4]) {
-      err("DataStore.getSchemas()[4] должен существовать");
-    }
-    console.log(`L4 (manifest): tickets=${l4Tickets.length}, fields=${l4Schema.fields.length} — OK`);
-
-    console.log(fail === 0 ? "PASS: все проверки L1/L2/L3 + L4-manifest пройдены" : `FAIL: ${fail} ошибок`);
-    process.exit(fail === 0 ? 0 : 1);
-
-  } catch (e) {
-    console.error("КРИТИЧЕСКАЯ ОШИБКА ТЕСТА:", e);
-    process.exit(1);
+  for (const id of Object.keys(fields)) {
+    const el = State.currentForm && State.currentForm.fields[id];
+    if (!el) continue;
+    el.value = fields[id];
+    el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 }
 
-runTest();
+function checkIncidents(all) {
+  const list = State.currentForm && State.currentForm.slots && State.currentForm.slots.incidents;
+  if (!list) return;
+  list.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = !!all; });
+}
+
+function setDup(value) {
+  const el = document.querySelector('[data-slot="dup-select"]');
+  if (el) el.value = value;
+}
+
+try {
+  init();
+
+  document.getElementById("btn-to-level-select").click();
+  document.querySelector('[data-level="3"]').click();
+  hideModal("modal-intro");
+
+  if (!document.getElementById("screen-queue").classList.contains("active")) {
+    err("не открыт экран очереди L3");
+  }
+
+  const tickets = bundle.TICKETS_L3;
+
+  for (const t of tickets) {
+    openWork(t.id);
+    requestEngineerClarify();
+
+    applyFields({
+      root: "причина: " + t.rootKeywords.join(", "),
+      workaround: String(t.workaroundCorrect),
+      radical: String(t.radicalCorrect),
+      outcome: t.outcome.correct
+    });
+
+    if (t.problem) {
+      checkIncidents(true);
+      const rfcText = (bundle.PROBLEMS.find(p => p.id === t.problem.record) || {}).rfc
+        || ("исправить: " + t.rootKeywords.join(", "));
+      applyFields({
+        impact: t.problem.impact,
+        prob: t.problem.prob,
+        owner: t.problem.owner,
+        method: t.problem.method,
+        rfc: rfcText
+      });
+    } else if (t.linkedProblemId) {
+      applyFields({ linkedProb: t.linkedProblemId });
+    }
+
+    if (t.duplicateOf) setDup(t.duplicateOf);
+
+    validateCurrentForm();
+    submitLevel();
+    hideModal("modal-reg");
+
+    const res = State.resultsEngineer[t.id];
+    if (!res) {
+      err(t.id + ": результат не сохранён");
+    } else if (!res.ok) {
+      err(t.id + ": эталонный ответ не прошёл. Ошибки: " + res.errs.join(", "));
+      for (const c of res.comparison) {
+        if (c.isError) console.error("   - " + c.field + ": " + c.value + " | нужно: " + c.expected);
+      }
+    }
+  }
+
+  renderQueue();
+  const done = document.querySelector("[data-queue-done]").textContent;
+  if (done !== String(tickets.length)) {
+    err(`счётчик очереди: ${done} вместо ${tickets.length}`);
+  }
+
+  document.querySelector("[data-queue-finish]").click();
+  if (!document.getElementById("screen-res").classList.contains("active")) {
+    err("не открыт экран результатов");
+  }
+  const rows = document.querySelectorAll("#res-table tbody tr").length;
+  if (rows !== tickets.length) {
+    err(`в итоговой таблице строк: ${rows} вместо ${tickets.length}`);
+  }
+  const okCount = document.querySelectorAll("#res-table .tag.ok").length;
+  console.log(`INFO: 'Успех' в итогах: ${okCount} / ${tickets.length}`);
+
+  document.querySelector('[data-close="modal-problems"]')?.click();
+  const { openProblems } = await import("../js/service-desk/app/reference.js");
+  openProblems();
+  const probCards = document.querySelectorAll("#problems-body > div").length;
+  if (probCards !== 3) {
+    err(`карточек проблем: ${probCards} вместо 3`);
+  }
+  hideModal("modal-problems");
+
+  State.level = 3;
+  openWork('TK-302');
+  applyFields({
+    root: "неизвестно",
+    workaround: "1",
+    radical: "1",
+    outcome: "new_problem"
+  });
+  validateCurrentForm();
+  submitLevel();
+  hideModal("modal-reg");
+
+  const res2 = State.resultsEngineer['TK-302'];
+  if (!res2 || res2.errs.length < 2) {
+    err(`негативный тест: сломанный ответ не пойман (errs=${res2 ? res2.errs.length : 0})`);
+  }
+
+  runAutotestsEngineer();
+  hideModal("modal-autotest");
+  const atOk = document.querySelectorAll("#autotest-report-body .tag.ok").length;
+  const atBad = document.querySelectorAll("#autotest-report-body .tag.bad").length;
+  const expectedAutotests = tickets.length * 2;
+  console.log(`Автотесты L3: ${atOk} OK / ${atBad} BAD (ожидалось ${expectedAutotests} OK / 0 BAD)`);
+  if (atBad > 0) err(`автотесты L3 провалились: ${atBad} BAD`);
+
+  runAutotests();
+  hideModal("modal-autotest");
+  const l1Ok = document.querySelectorAll("#autotest-report-body .tag.ok").length;
+  const l1Bad = document.querySelectorAll("#autotest-report-body .tag.bad").length;
+  const expectedL1 = bundle.TICKETS.length * 2;
+  console.log(`Автотесты L1: ${l1Ok} OK / ${l1Bad} BAD (ожидалось ${expectedL1} OK / 0 BAD)`);
+  if (l1Bad > 0) err(`автотесты L1 провалились: ${l1Bad} BAD`);
+
+  runAutotestsL2();
+  hideModal("modal-autotest");
+  const l2Ok = document.querySelectorAll("#autotest-report-body .tag.ok").length;
+  const l2Bad = document.querySelectorAll("#autotest-report-body .tag.bad").length;
+  const expectedL2 = bundle.TICKETS_L2.length * 2;
+  console.log(`Автотесты L2: ${l2Ok} OK / ${l2Bad} BAD (ожидалось ${expectedL2} OK / 0 BAD)`);
+  if (l2Bad > 0) err(`автотесты L2 провалились: ${l2Bad} BAD`);
+
+  // G.1b: middleware — audit log grows on every submit
+  State.level = 3;
+  openWork('TK-302');
+  requestEngineerClarify();
+  applyFields({
+    root: "объем данных, таймаут, индекс",
+    workaround: "0",
+    radical: "0",
+    outcome: "resolved"
+  });
+  const mwLogBefore = State.submitLog.length;
+  submitLevel();
+  hideModal("modal-reg");
+  const mwLogAfter = State.submitLog.length;
+  if (mwLogAfter !== mwLogBefore + 1) {
+    err(`middleware: submitLog ${mwLogBefore} -> ${mwLogAfter} (expected +1)`);
+  }
+  const lastMwLog = State.submitLog[State.submitLog.length - 1];
+  if (!lastMwLog || lastMwLog.ticketId !== "TK-302") {
+    err(`middleware: last log ticketId=${lastMwLog && lastMwLog.ticketId}, expected TK-302`);
+  }
+  if (lastMwLog.level !== 3 || lastMwLog.workflow !== "engineer") {
+    err(`middleware: level/workflow mismatch: ${lastMwLog.level}/${lastMwLog.workflow}`);
+  }
+  console.log("G.1b middleware: audit log populated — OK");
+
+  // G.1c: pluggable ProgressStore — mock overrides default
+  const __progressCalls__ = [];
+  Extension.setProgressStore({
+    load: (l) => { __progressCalls__.push(['load', l]); return null; },
+    save: (l, s) => { __progressCalls__.push(['save', l, !!(s && s.level === l)]); },
+    reset: () => { __progressCalls__.push(['reset']); },
+    getSummary: () => {
+      __progressCalls__.push(['getSummary']);
+      return { level1: null, level2: null, level3: null };
+    }
+  });
+
+  try {
+    Extension.setProgressStore({});
+    err("G.1c: setProgressStore({}) should throw");
+  } catch (e) { /* expected */ }
+
+  try {
+    Extension.setProgressStore({ load: function(){}, save: function(){} });
+    err("G.1c: setProgressStore missing methods should throw");
+  } catch (e) { /* expected */ }
+
+  const { startLevel, renderLevelCards } = await import("../js/service-desk/app/levels.js");
+
+  __progressCalls__.length = 0;
+  startLevel(3);
+  hideModal("modal-intro");
+  if (!__progressCalls__.some(c => c[0] === 'load' && c[1] === 3)) {
+    err("G.1c: startLevel(3) didn't call store.load(3)");
+  }
+
+  __progressCalls__.length = 0;
+  openWork('TK-302');
+  requestEngineerClarify();
+  applyFields({
+    root: "объем данных, таймаут, индекс",
+    workaround: "0",
+    radical: "0",
+    outcome: "resolved"
+  });
+  submitLevel();
+  hideModal("modal-reg");
+  if (!__progressCalls__.some(c => c[0] === 'save' && c[1] === 3 && c[2] === true)) {
+    err("G.1c: submitLevel didn't call store.save(3, snapshot with level=3)");
+  }
+
+  __progressCalls__.length = 0;
+  renderLevelCards();
+  if (!__progressCalls__.some(c => c[0] === 'getSummary')) {
+    err("G.1c: renderLevelCards didn't call store.getSummary()");
+  }
+
+  Extension.setProgressStore(null);
+  if (Extension.getProgressStore() !== ProgressStore) {
+    err("G.1c: setProgressStore(null) should restore default ProgressStore");
+  }
+
+  console.log("G.1c progressStore: pluggable store — OK");
+
+  // L4 manifest
+  const l4Ids = DataStore.getLevels().map(l => l.id);
+  if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {
+    err("LEVELS должен содержать уровень 4");
+  }
+  const l4Tickets = DataStore.getTickets(4);
+  if (!Array.isArray(l4Tickets) || l4Tickets.length !== 1) {
+    err("DataStore.getTickets(4) должен вернуть 1 тикет");
+  }
+  const l4Schema = DataStore.getSchema(4);
+  if (!l4Schema || !Array.isArray(l4Schema.fields) || l4Schema.fields.length !== 2) {
+    err("DataStore.getSchema(4) должен вернуть {fields: [2 поля]}");
+  }
+  const l4SchemasMap = DataStore.getSchemas();
+  if (!l4SchemasMap[4]) {
+    err("DataStore.getSchemas()[4] должен существовать");
+  }
+  console.log(`L4 (manifest): tickets=${l4Tickets.length}, fields=${l4Schema.fields.length} — OK`);
+
+  console.log(fail === 0 ? "PASS: все проверки L1/L2/L3 + L4-manifest пройдены" : `FAIL: ${fail} ошибок`);
+  process.exit(fail === 0 ? 0 : 1);
+} catch (e) {
+  console.error("КРИТИЧЕСКАЯ ОШИБКА ТЕСТА:", e);
+  process.exit(1);
+}

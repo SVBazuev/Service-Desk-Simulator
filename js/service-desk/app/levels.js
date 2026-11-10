@@ -1,28 +1,34 @@
 /**
  * levels.js — level selection screen, snapshots, and level startup.
  */
+import { State } from "../../core/state.js";
+import { DataStore } from "../../core/dataStore.js";
+import { Extension } from "../../core/extensions.js";
+import { showScreen, showModal } from "../../utils.js";
+import { renderQueue } from "./router.js";
+import { resetState } from "./init.js";
 
-function makeSnapshot() {
-  const level = state.level;
+export function makeSnapshot() {
+  const level = State.level;
   const snap = {
     level: level,
-    results: state.getResults(level),
+    results: State.getResults(level),
     total: DataStore.getTickets(level).length
   };
   if (DataStore.getLevelWorkflow(level) === "engineer") {
-    snap.createdProblems = state.createdProblems;
+    snap.createdProblems = State.createdProblems;
   }
   return snap;
 }
 
-function applySnapshot(snap) {
+export function applySnapshot(snap) {
   if (!snap || !snap.level) return false;
-  state.resultsByLevel[snap.level] = snap.results || {};
-  if (snap.createdProblems) state.createdProblems = snap.createdProblems;
+  State.resultsByLevel[snap.level] = snap.results || {};
+  if (snap.createdProblems) State.createdProblems = snap.createdProblems;
   return true;
 }
 
-function renderLevelCards() {
+export function renderLevelCards() {
   const summary = Extension.getProgressStore().getSummary();
   const wrap = document.getElementById("level-cards");
   wrap.innerHTML = "";
@@ -46,9 +52,9 @@ function renderLevelCards() {
   }
 }
 
-function startLevel(n) {
+export function startLevel(n) {
   resetState();
-  state.level = n;
+  State.level = n;
   const saved = Extension.getProgressStore().load(n);
   if (saved) applySnapshot(saved);
 
