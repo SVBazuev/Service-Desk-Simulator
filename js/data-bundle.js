@@ -1354,6 +1354,7 @@ var SCHEMA_L2 = {
     {
       "id": "assignee",
       "label": "Назначить ответственного *",
+      "compactLabel": "Ответственный",
       "type": "select",
       "required": true,
       "source": "EMPLOYEES",
@@ -1365,6 +1366,7 @@ var SCHEMA_L2 = {
     {
       "id": "comment",
       "label": "Комментарий / Задача для исполнителя *",
+      "compactLabel": "Комментарий",
       "type": "select",
       "required": true,
       "source": "COMMENTS_L2",

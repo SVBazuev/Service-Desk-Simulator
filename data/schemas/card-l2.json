@@ -13,7 +13,7 @@
         { "id": "vers", "label": "Продукты и версии", "type": "versions", "required": true, "validate": { "rule": "includes", "path": "ver" } },
         { "id": "imp", "label": "Важность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"], "validate": { "rule": "eq", "path": "imp" } },
         { "id": "urg", "label": "Срочность *", "type": "select", "required": true, "options": ["высокая", "средняя", "низкая"], "validate": { "rule": "eq", "path": "urg" } },
-        { "id": "assignee", "label": "Назначить ответственного *", "type": "select", "required": true, "source": "EMPLOYEES", "validate": { "rule": "eq", "path": "expectedAssignee" } },
-        { "id": "comment", "label": "Комментарий / Задача для исполнителя *", "type": "select", "required": true, "source": "COMMENTS_L2", "validate": { "rule": "eq", "path": "expectedComment" } }
+        { "id": "assignee", "label": "Назначить ответственного *", "compactLabel": "Ответственный", "type": "select", "required": true, "source": "EMPLOYEES", "validate": { "rule": "eq", "path": "expectedAssignee" } },
+        { "id": "comment", "label": "Комментарий / Задача для исполнителя *", "compactLabel": "Комментарий", "type": "select", "required": true, "source": "COMMENTS_L2", "validate": { "rule": "eq", "path": "expectedComment" } }
     ]
 }

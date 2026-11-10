@@ -3,9 +3,14 @@
  */
 var Validator = {
   _rules: {},
+  _fieldFormatters: {},
 
   registerRule: function(name, fn) {
     this._rules[name] = fn;
+  },
+
+  registerFieldFormatter: function(fieldId, fn) {
+    this._fieldFormatters[fieldId] = fn;
   },
 
   // Safe value getter by path (e.g. "etalon.imp")
@@ -17,8 +22,8 @@ var Validator = {
   validate: function(schema, ticket, formData) {
     const errs = [];
     const comparison = [];
-    const addComp = (field, val, exp, explain) => {
-      const isErr = val !== exp;
+    const addComp = (field, val, exp, explain, isErrOverride) => {
+      const isErr = isErrOverride !== undefined ? isErrOverride : (val !== exp);
       if (isErr) errs.push(field);
       comparison.push({
         field, value: val || "Не выбрано", expected: exp || "-", isError: isErr, explain: explain || ""
@@ -41,21 +46,25 @@ var Validator = {
       const expected = this.getExpectedValue(ticket, field.validate.path);
 
       if (rule === "eq") {
-        if (field.id === "org") {
-          addComp("Организация", getOrg(val)?.name, getOrg(expected)?.name, "Организация должна соответствовать обращению.");
-        } else if (field.id === "cont") {
-          addComp("Контактное лицо", CONTACTS.find(x => x.id === val)?.name, getContactsByOrg(ticket.orgId).find(x => x.id === expected)?.name, "Контактное лицо должно соответствовать обращению.");
-        } else if (field.id === "assignee") {
-          const empName = DataStore.getEmployees().find(e => e.id === val)?.name || val;
-          const expName = DataStore.getEmployees().find(e => e.id === expected)?.name || expected;
-          addComp("Ответственный", empName, expName, ticket.explain);
-        } else if (field.id === "comment") {
-          const comText = DataStore.getCommentsL2().find(c => c.id === val)?.text || val;
-          const expComText = DataStore.getCommentsL2().find(c => c.id === expected)?.text || expected;
-          addComp("Комментарий", comText, expComText, "Комментарий должен соответствовать типу задачи.");
+        const fmt = this._fieldFormatters[field.id];
+        let displayVal, displayExp, explain;
+        if (fmt) {
+          const rv = fmt(val, ticket);
+          const re = fmt(expected, ticket);
+          displayVal = (typeof rv === "string") ? rv
+                     : (rv && rv.display != null) ? rv.display
+                     : val;
+          displayExp = (typeof re === "string") ? re
+                     : (re && re.display != null) ? re.display
+                     : expected;
+          explain = (rv && rv.explain) || (re && re.explain) || "";
         } else {
-          addComp(field.label, val, expected, "");
+          displayVal = val;
+          displayExp = expected;
+          explain = "";
         }
+        const label = field.compactLabel || String(field.label).replace(/\s*\*+\s*$/, "");
+        addComp(label, displayVal, displayExp, explain, val !== expected);
       }
       else if (rule === "includes") {
         const isErr = !formData[field.id].includes(expected);

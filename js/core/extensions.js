@@ -22,5 +22,8 @@ var Extension = {
   },
   registerSlot: function(name, initial) {
     State.registerSlot(name, initial);
+  },
+  registerFieldFormatter: function(fieldId, fn) {
+    Validator.registerFieldFormatter(fieldId, fn);
   }
 };

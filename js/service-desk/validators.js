@@ -3,6 +3,36 @@
  * registered via Extension API.
  */
 
+// Field formatters for "eq" rule — map internal ids to display strings.
+// Return either a string (display only) or { display, explain } object.
+Extension.registerFieldFormatter("org", function(value, ticket) {
+  return {
+    display: getOrg(value)?.name || value,
+    explain: "Организация должна соответствовать обращению."
+  };
+});
+
+Extension.registerFieldFormatter("cont", function(value, ticket) {
+  return {
+    display: CONTACTS.find(c => c.id === value)?.name || value,
+    explain: "Контактное лицо должно соответствовать обращению."
+  };
+});
+
+Extension.registerFieldFormatter("assignee", function(value, ticket) {
+  return {
+    display: DataStore.getEmployees().find(e => e.id === value)?.name || value,
+    explain: (ticket && ticket.explain) || ""
+  };
+});
+
+Extension.registerFieldFormatter("comment", function(value, ticket) {
+  return {
+    display: DataStore.getCommentsL2().find(c => c.id === value)?.text || value,
+    explain: "Комментарий должен соответствовать типу задачи."
+  };
+});
+
 Extension.registerValidator("problem_logic", function(ticket, formData, comparison, errs) {
   const outCorrect = formData.outcome === ticket.outcome.correct;
   const outLabel = { resolved: "Решено", new_problem: "Новая проблема", known_error: "Известная ошибка", fixed_problem: "Исправленная проблема" };
