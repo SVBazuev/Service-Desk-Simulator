@@ -1,9 +1,14 @@
 /**
  * dataStore.js — centralized data store.
- * Encapsulates global variables created by the bundler (data-bundle.js).
+ * Wraps the exported constants from data-bundle.js.
  */
+import {
+  ORGS, CONTACTS, EMPLOYEES, EMPLOYEES_L3, COMMENTS_L2,
+  INTROS, TAX, MATRIX, LEVELS, LEVEL_DATA,
+  PROBLEMS, KB_L3, PROBLEM_METHODS
+} from "../data-bundle.js";
 
-var DataStore = {
+export const DataStore = {
   getOrgs: () => ORGS,
   getOrg: (id) => ORGS.find(o => o.id === id),
 
@@ -13,8 +18,7 @@ var DataStore = {
   getEmployees: () => EMPLOYEES,
   getEmployeesL3: () => EMPLOYEES_L3,
   getCommentsL2: () => COMMENTS_L2,
-  // Intro dictionary: lookup by name or by { template, title?, body? }
-  // object. String → base entry; object → base entry with overrides.
+
   getIntro: (def) => {
     if (!def) return null;
     const key = typeof def === "string" ? def : def.template;
@@ -30,7 +34,6 @@ var DataStore = {
   getTax: () => TAX,
   getMatrix: () => MATRIX,
 
-  // Levels (metadata from manifests)
   getLevels: () => LEVELS,
   getLevel: (id) => LEVELS.find(l => l.id === id) || null,
   getLevelWorkflow: (id) => {
@@ -38,7 +41,6 @@ var DataStore = {
     return lvl ? lvl.workflow : null;
   },
 
-  // Tickets by level (from LEVEL_DATA)
   getTickets: (level) => {
     const data = LEVEL_DATA[level];
     return data ? data.tickets : [];
@@ -48,7 +50,6 @@ var DataStore = {
     return tickets.find(t => t.id === id);
   },
 
-  // Schemas by level
   getSchema: (level) => {
     const data = LEVEL_DATA[level];
     return data ? data.schema : null;

@@ -1,20 +1,33 @@
-// ===== Autotests для уровней L1/L2/L3 =====
+/**
+ * autotests.js — in-UI positive + negative smoke tests for L1/L2/L3.
+ * G.1e: exported for external test harnesses.
+ */
+import { State } from "./core/state.js";
+import {
+  TICKETS, TICKETS_L2, TICKETS_L3,
+  ORGS, EMPLOYEES, EMPLOYEES_L3,
+  COMMENTS_L2, PROBLEM_METHODS, PROBLEMS, CONTACTS
+} from "./data-bundle.js";
+import {
+  escapeHtml, hideModal, showModal, showScreen, getOrg, getContactsByOrg
+} from "./utils.js";
+import { openWork, renderQueue } from "./service-desk/app/router.js";
+import { submitLevel } from "./service-desk/app/submits.js";
+import { validateCurrentForm, requestEngineerClarify } from "./service-desk/app/forms.js";
+import { renderVerList } from "./service-desk/workflows.js";
 
-// Хелпер: установить значение поля в текущей Registry-форме и триггернуть change.
 function setField(id, value) {
-  const el = state.currentForm && state.currentForm.fields && state.currentForm.fields[id];
+  const el = State.currentForm && State.currentForm.fields && State.currentForm.fields[id];
   if (!el) return;
   el.value = value;
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function setCheckboxGroup(id, checked) {
-  const list = state.currentForm && state.currentForm.slots && state.currentForm.slots[id];
+  const list = State.currentForm && State.currentForm.slots && State.currentForm.slots[id];
   if (!list) return;
   list.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = !!checked; });
 }
-
-// ===== Генерация HTML =====
 
 function generateFormHtml(t, level) {
   if (level === 1) {
@@ -85,18 +98,15 @@ function generateDetailsHtml(res) {
   return detailsHtml;
 }
 
-// ===== L1 =====
-
-function runAutotests() {
+export function runAutotests() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
 
-  const backupResults = JSON.parse(JSON.stringify(state.results));
-  const backupId = state.currentId;
-  const backupLevel = state.level;
+  const backupResults = JSON.parse(JSON.stringify(State.results));
+  const backupId = State.currentId;
+  const backupLevel = State.level;
 
-  const backupLevelState = state.level;
-  state.level = 1;
+  State.level = 1;
 
   let html = "";
 
@@ -104,8 +114,7 @@ function runAutotests() {
     openWork(t.id);
     const et = t.etalon;
 
-    // ТЕСТ 1: Правильно
-    setField("org", et.org);          // триггерит орг-каскад + версии
+    setField("org", et.org);
     setField("cont", et.cont);
     setField("chan", et.chan);
     setField("type", et.type);
@@ -115,14 +124,13 @@ function runAutotests() {
     setField("imp", et.imp);
     setField("urg", et.urg);
 
-    register();
+    submitLevel();
     hideModal("modal-reg");
 
-    const res1 = state.results[t.id];
+    const res1 = State.results[t.id];
     const pass1 = res1 && res1.ok;
 
-    // ТЕСТ 2: Ломаем
-    delete state.results[t.id];
+    delete State.results[t.id];
     openWork(t.id);
 
     const wrongOrgObj = ORGS.find(o => o.id !== et.org);
@@ -134,15 +142,15 @@ function runAutotests() {
     setField("prod", et.prod === "Про.Документы" ? "Про.Продажи" : "Про.Документы");
     setField("cat", "");
     setField("sub", "");
-    state.orgVersions = [];
+    State.orgVersions = [];
     renderVerList();
     setField("imp", et.imp === "высокая" ? "низкая" : "высокая");
     setField("urg", et.urg === "высокая" ? "низкая" : "высокая");
 
-    register();
+    submitLevel();
     hideModal("modal-reg");
 
-    const res2 = state.results[t.id];
+    const res2 = State.results[t.id];
     const pass2 = res2 && res2.errs.length > 0;
 
     html += `<tr>
@@ -155,45 +163,40 @@ function runAutotests() {
 
   reportBody.innerHTML = html;
 
-  state.results = backupResults;
-  state.currentId = backupId;
-  state.level = backupLevelState;
+  State.results = backupResults;
+  State.currentId = backupId;
+  State.level = backupLevel;
 
   renderQueue();
   showScreen("screen-queue");
   showModal("modal-autotest");
 }
 
-// ===== L2 =====
-
-function runAutotestsL2() {
+export function runAutotestsL2() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
 
-  const backupResults = JSON.parse(JSON.stringify(state.resultsL2));
-  const backupId = state.currentId;
-  const backupLevel = state.level;
+  const backupResults = JSON.parse(JSON.stringify(State.resultsL2));
+  const backupId = State.currentId;
+  const backupLevel = State.level;
   const backupWorkloads = EMPLOYEES.map(e => ({ id: e.id, workload: e.workload }));
 
-  const backupLevelState = state.level;
-  state.level = 2;
+  State.level = 2;
 
   let html = "";
 
   for (const t of TICKETS_L2) {
     openWork(t.id);
 
-    // ТЕСТ 1: Правильно
     setField("assignee", t.expectedAssignee);
     setField("comment", t.expectedComment);
-    assignL2();
+    submitLevel();
     hideModal("modal-assign");
 
-    const res1 = state.resultsL2[t.id];
+    const res1 = State.resultsL2[t.id];
     const pass1 = res1 && res1.ok;
 
-    // ТЕСТ 2: Ломаем
-    delete state.resultsL2[t.id];
+    delete State.resultsL2[t.id];
     openWork(t.id);
 
     const wrongAssignee = EMPLOYEES.find(e => e.id !== t.expectedAssignee && e.status === "В отпуске")
@@ -205,10 +208,10 @@ function runAutotestsL2() {
     setField("assignee", wrongAssignee.id);
     setField("comment", wrongComment.id);
 
-    assignL2();
+    submitLevel();
     hideModal("modal-assign");
 
-    const res2 = state.resultsL2[t.id];
+    const res2 = State.resultsL2[t.id];
     const pass2 = res2 && res2.errs.length > 0;
 
     html += `<tr>
@@ -221,9 +224,9 @@ function runAutotestsL2() {
 
   reportBody.innerHTML = html;
 
-  state.resultsL2 = backupResults;
-  state.currentId = backupId;
-  state.level = backupLevelState;
+  State.resultsL2 = backupResults;
+  State.currentId = backupId;
+  State.level = backupLevel;
 
   for (const b of backupWorkloads) {
     const emp = EMPLOYEES.find(e => e.id === b.id);
@@ -235,20 +238,17 @@ function runAutotestsL2() {
   showModal("modal-autotest");
 }
 
-// ===== L3 =====
-
-function runAutotestsEngineer() {
+export function runAutotestsEngineer() {
   const reportBody = document.getElementById("autotest-report-body");
   reportBody.innerHTML = "";
 
-  const backupResults = JSON.parse(JSON.stringify(state.resultsEngineer));
-  const backupId = state.currentId;
-  const backupLevel = state.level;
-  const backupEngineer = { ...state.engineer };
-  const backupCreated = (state.createdProblems || []).slice();
+  const backupResults = JSON.parse(JSON.stringify(State.resultsEngineer));
+  const backupId = State.currentId;
+  const backupLevel = State.level;
+  const backupEngineer = { ...State.engineer };
+  const backupCreated = (State.createdProblems || []).slice();
 
-  const backupLevelState = state.level;
-  state.level = 3;
+  State.level = 3;
 
   let html = "";
 
@@ -256,7 +256,6 @@ function runAutotestsEngineer() {
     openWork(t.id);
     requestEngineerClarify();
 
-    // ТЕСТ 1: Правильно
     setField("root", "причина: " + t.rootKeywords.join(", "));
     setField("workaround", String(t.workaroundCorrect));
     setField("radical", String(t.radicalCorrect));
@@ -276,14 +275,13 @@ function runAutotestsEngineer() {
     }
 
     validateCurrentForm();
-    submitEngineer();
+    submitLevel();
     hideModal("modal-reg");
 
-    const res1 = state.resultsEngineer[t.id];
+    const res1 = State.resultsEngineer[t.id];
     const pass1 = res1 && res1.ok;
 
-    // ТЕСТ 2: Ломаем
-    delete state.resultsEngineer[t.id];
+    delete State.resultsEngineer[t.id];
     openWork(t.id);
 
     setField("root", "неизвестно");
@@ -305,10 +303,10 @@ function runAutotestsEngineer() {
     }
 
     validateCurrentForm();
-    submitEngineer();
+    submitLevel();
     hideModal("modal-reg");
 
-    const res2 = state.resultsEngineer[t.id];
+    const res2 = State.resultsEngineer[t.id];
     const pass2 = res2 && res2.errs.length > 0;
 
     html += `<tr>
@@ -321,11 +319,11 @@ function runAutotestsEngineer() {
 
   reportBody.innerHTML = html;
 
-  state.resultsEngineer = backupResults;
-  state.currentId = backupId;
-  state.level = backupLevelState;
-  state.engineer = backupEngineer;
-  state.createdProblems = backupCreated;
+  State.resultsEngineer = backupResults;
+  State.currentId = backupId;
+  State.level = backupLevel;
+  State.engineer = backupEngineer;
+  State.createdProblems = backupCreated;
 
   renderQueue();
   showScreen("screen-queue");

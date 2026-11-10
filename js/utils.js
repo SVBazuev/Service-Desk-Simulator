@@ -1,9 +1,14 @@
-function escapeHtml(s) {
+import { DataStore } from "./core/dataStore.js";
+import { State } from "./core/state.js";
+
+export function q(sel) { return document.querySelector(sel); }
+
+export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g,
     ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
 }
 
-function fillSelect(sel, items) {
+export function fillSelect(sel, items) {
   if (!sel) return;
   sel.innerHTML = "";
   const def = document.createElement("option");
@@ -18,51 +23,49 @@ function fillSelect(sel, items) {
   }
 }
 
-function showScreen(id) {
+export function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
 }
 
-function showModal(id) {
+export function showModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.add("active");
 }
 
-function hideModal(id) {
+export function hideModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove("active");
 }
 
-// ИСПОЛЬЗУЕМ DataStore
-function getOrg(id) { return DataStore.getOrg(id); }
-function getContactsByOrg(id) { return DataStore.getContactsByOrg(id); }
+export function getOrg(id) { return DataStore.getOrg(id); }
+export function getContactsByOrg(id) { return DataStore.getContactsByOrg(id); }
 
-function getCatList(group) {
+export function getCatList(group) {
   const tax = DataStore.getTax();
   if (!group || !tax[group]) return [];
   return tax[group];
 }
 
-function getSubList(group, catName) {
+export function getSubList(group, catName) {
   const list = getCatList(group);
   const c = list.find(x => x.name === catName);
   if (!c) return [];
   return c.subs;
 }
 
-function calcPriority(imp, urg) {
+export function calcPriority(imp, urg) {
   const matrix = DataStore.getMatrix();
   const key = imp + "|" + urg;
   return matrix[key] || null;
 }
 
-function getOrgVersions(org) {
+export function getOrgVersions(org) {
   if (!org || !org.products) return [];
   return org.products.map(p => ({ name: p.name, ver: p.ver }));
 }
 
-// ИСПОЛЬЗУЕМ State и DataStore
-function getTickets() { return DataStore.getTickets(State.level); }
-function getResults() { return State.getResults(State.level); }
-function getTicket(id) { return DataStore.getTicket(State.level, id); }
+export function getTickets() { return DataStore.getTickets(State.level); }
+export function getResults() { return State.getResults(State.level); }
+export function getTicket(id) { return DataStore.getTicket(State.level, id); }

@@ -1,5 +1,5 @@
 // АВТОГЕНЕРАЦИЯ! Не редактируйте этот файл руками. Меняйте JSON в папке data/ и запускайте npm run build
-var ORGS = [
+export const ORGS = [
   {
     "id": "ORG1",
     "name": "ООО «Альфа-Логистика»",
@@ -99,7 +99,7 @@ var ORGS = [
   }
 ];
 
-var CONTACTS = [
+export const CONTACTS = [
   {
     "id": "C1",
     "orgId": "ORG1",
@@ -180,7 +180,7 @@ var CONTACTS = [
   }
 ];
 
-var EMPLOYEES = [
+export const EMPLOYEES = [
   {
     "id": "E1",
     "name": "Иванов Иван",
@@ -261,7 +261,7 @@ var EMPLOYEES = [
   }
 ];
 
-var EMPLOYEES_L3 = [
+export const EMPLOYEES_L3 = [
   {
     "id": "E4",
     "name": "Кузнецов Сергей",
@@ -278,7 +278,7 @@ var EMPLOYEES_L3 = [
   }
 ];
 
-var COMMENTS_L2 = [
+export const COMMENTS_L2 = [
   {
     "id": "CM1",
     "text": "Прошу взять в работу согласно регламенту и сообщить о результатах."
@@ -293,7 +293,7 @@ var COMMENTS_L2 = [
   }
 ];
 
-var TAX = {
+export const TAX = {
   "Про.Документы": [
     {
       "name": "Документооборот",
@@ -396,7 +396,7 @@ var TAX = {
   ]
 };
 
-var MATRIX = {
+export const MATRIX = {
   "высокая|высокая": {
     "prio": "Критический",
     "react": "2 часа",
@@ -444,13 +444,13 @@ var MATRIX = {
   }
 };
 
-var PROBLEM_METHODS = [
+export const PROBLEM_METHODS = [
   "5 почему",
   "Диаграмма Исикавы",
   "Анализ логов"
 ];
 
-var ARCHIVE_INCIDENTS = {
+export const ARCHIVE_INCIDENTS = {
   "PRB-1": [
     {
       "id": "TK-241",
@@ -477,7 +477,7 @@ var ARCHIVE_INCIDENTS = {
   ]
 };
 
-var INTROS = {
+export const INTROS = {
   "dispatcher": {
     "title": "Уровень 2: Распределение и эскалации",
     "body": "<p>Добро пожаловать на позицию <b>Тимлида команды Бета</b>!</p>\n<p>Теперь вы не просто регистрируете обращения, а <b>распределяете их между сотрудниками</b>. Ваша задача - правильно определить, кто должен заниматься каждым обращением, и какую задачу ему поставить.</p>\n<p style=\"margin-top: 12px;\"><b>Что нужно делать:</b></p>\n<ul style=\"padding-left: 20px;\">\n  <li>Изучите обращение.</li>\n  <li>Проверьте заполнение карточки (важность, срочность, подкатегории). Если что-то не так - исправьте!</li>\n  <li>Откройте <b>«Справочник сотрудников»</b>, чтобы узнать их специализацию, статус (кто-то может быть в отпуске!) и загруженность (сколько обращений уже в работе).</li>\n  <li>Выберите <b>Ответственного</b> из выпадающего списка.</li>\n  <li>Выберите <b>Комментарий / Задачу</b> для исполнителя (например, запросить анализ, взять в работу или связаться с заказчиком по вопросам сроков).</li>\n  <li>Нажмите <b>«Изменить ответственного»</b>, чтобы сохранить решение.</li>\n</ul>\n<p style=\"margin-top: 12px; color: var(--sub); font-size: 13px;\">\n  <i>Подсказка:</i> Если вопрос касается сроков, договоров или эскалации (например, просят продлить SLA), его нужно передавать <b>менеджеру</b>, а не инженерам техподдержки. Если нужен глубокий анализ кода - <b>3-й линии (L3)</b>.\n</p>"
@@ -488,7 +488,7 @@ var INTROS = {
   }
 };
 
-var PROBLEMS = [
+export const PROBLEMS = [
   {
     "id": "PRB-1",
     "status": "known_error",
@@ -527,7 +527,7 @@ var PROBLEMS = [
   }
 ];
 
-var KB_L3 = [
+export const KB_L3 = [
   {
     "title": "Как работать на 2-й линии",
     "html": "<h3>Работа инженера 2-й линии</h3><ol><li><b>Прочитать обращение</b> и понять, что именно сломано и с чем связан сбой (обновление, изменение структуры, настройки).</li><li><b>Запросить недостающую информацию</b> у заказчика, если её не хватает (кнопка «Уточнить детали»): кто столкнулся, когда началось, что меняли.</li><li><b>Провести диагностику</b>: посмотреть логи, конфигурацию, лицензионный ключ - через вкладку «Диагностика».</li><li><b>Определить корневую причину</b> своими словами и выбрать <b>обходное решение</b> (снять боль заказчика сейчас).</li><li><b>Выбрать радикальное решение</b>: устранение первопричины.</li><li><b>Определить исход</b>: «Решено» (первопричина устранена) или «Известная ошибка (Known Error)» (первопричина устраняться не может сейчас - нужен фикс в продукте, действует обходка).</li><li>Если инцидент - часть <b>повторяющегося паттерна</b> (та же первопричина у вас или у других заказчиков), заведите <b>Problem Record</b>: опишите проблему, оцените влияние и вероятность, назначьте владельца, выберите метод расследования, подайте RFC.</li></ol>"
@@ -562,7 +562,7 @@ var KB_L3 = [
   }
 ];
 
-var TICKETS = [
+export const TICKETS = [
   {
     "id": "PR-001",
     "orgId": "ORG1",
@@ -917,7 +917,7 @@ var TICKETS = [
   }
 ];
 
-var SCHEMA_L1 = {
+export const SCHEMA_L1 = {
   "template": "registrar",
   "fields": [
     {
@@ -1062,7 +1062,7 @@ var SCHEMA_L1 = {
   ]
 };
 
-var TICKETS_L2 = [
+export const TICKETS_L2 = [
   {
     "id": "TK-201",
     "orgId": "ORG1",
@@ -1209,7 +1209,7 @@ var TICKETS_L2 = [
   }
 ];
 
-var SCHEMA_L2 = {
+export const SCHEMA_L2 = {
   "template": "dispatcher",
   "fields": [
     {
@@ -1354,6 +1354,7 @@ var SCHEMA_L2 = {
     {
       "id": "assignee",
       "label": "Назначить ответственного *",
+      "compactLabel": "Ответственный",
       "type": "select",
       "required": true,
       "source": "EMPLOYEES",
@@ -1365,6 +1366,7 @@ var SCHEMA_L2 = {
     {
       "id": "comment",
       "label": "Комментарий / Задача для исполнителя *",
+      "compactLabel": "Комментарий",
       "type": "select",
       "required": true,
       "source": "COMMENTS_L2",
@@ -1376,7 +1378,7 @@ var SCHEMA_L2 = {
   ]
 };
 
-var TICKETS_L3 = [
+export const TICKETS_L3 = [
   {
     "id": "TK-301",
     "orgId": "ORG1",
@@ -1763,7 +1765,7 @@ var TICKETS_L3 = [
   }
 ];
 
-var SCHEMA_L3 = {
+export const SCHEMA_L3 = {
   "template": "engineer",
   "fields": [
     {
@@ -1914,7 +1916,7 @@ var SCHEMA_L3 = {
   ]
 };
 
-var TICKETS_L4 = [
+export const TICKETS_L4 = [
   {
     "id": "PRB-401",
     "orgId": "ORG1",
@@ -1967,7 +1969,7 @@ var TICKETS_L4 = [
   }
 ];
 
-var SCHEMA_L4 = {
+export const SCHEMA_L4 = {
   "template": "engineer",
   "fields": [
     {
@@ -2002,7 +2004,7 @@ var SCHEMA_L4 = {
   ]
 };
 
-var LEVELS = [
+export const LEVELS = [
   {
     "id": 1,
     "title": "Уровень 1 — Регистрация обращений",
@@ -2064,7 +2066,7 @@ var LEVELS = [
   }
 ];
 
-var LEVEL_DATA = {
+export const LEVEL_DATA = {
   1: { tickets: TICKETS, schema: SCHEMA_L1 },
   2: { tickets: TICKETS_L2, schema: SCHEMA_L2 },
   3: { tickets: TICKETS_L3, schema: SCHEMA_L3 },

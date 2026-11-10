@@ -1,7 +1,13 @@
 /**
  * workflows.js — Service Desk workflow descriptors, readonly blocks,
- * widgets, state slots (orgVersions, engineer), and their helpers.
+ * widgets, state slots, and helpers that operate on them.
  */
+import { Extension } from "../core/extensions.js";
+import { TemplateRenderer } from "../core/templateRenderer.js";
+import { DataStore } from "../core/dataStore.js";
+import { State } from "../core/state.js";
+import { q, getOrg, getOrgVersions, calcPriority } from "../utils.js";
+import { validateCurrentForm } from "./app/forms.js";
 
 Extension.registerWorkflow("registrar", {
   panels: [
@@ -114,22 +120,19 @@ Extension.registerWidget("auto-calc", function(ticket, context, result) {
   return auto;
 });
 
-// Domain slots (moved out of js/core/state.js).
 Extension.registerSlot("orgVersions", []);
 Extension.registerSlot("engineer", { requestedClarify: false, clarified: false, diagOpen: null });
 
-// Domain helpers — moved from app.js. Live in service-desk/ because they
-// know about tickets, products and priority matrix.
-function renderVerList() {
+export function renderVerList() {
   const list = q('[data-slot="ver-list"]');
   if (!list) return;
   list.innerHTML = "";
-  if (!state.orgVersions || state.orgVersions.length === 0) {
+  if (!State.orgVersions || State.orgVersions.length === 0) {
     list.innerHTML = "<div style='color:var(--sub);font-size:13px'>Нет данных</div>";
     renderAddProdSelect();
     return;
   }
-  for (const v of state.orgVersions) {
+  for (const v of State.orgVersions) {
     const row = document.createElement("div");
     row.className = "ver-row";
     row.innerHTML = `<div class="ver-name">${v.name}</div><select data-ver-id="${v.id}"><option value="${v.ver}">${v.ver}</option></select><button class="ver-del" data-del-id="${v.id}">×</button>`;
@@ -138,7 +141,7 @@ function renderVerList() {
   list.querySelectorAll(".ver-del").forEach(btn => {
     btn.addEventListener("click", () => {
       const idv = parseInt(btn.getAttribute("data-del-id"));
-      state.orgVersions = state.orgVersions.filter(x => x.id !== idv);
+      State.orgVersions = State.orgVersions.filter(x => x.id !== idv);
       renderVerList();
       validateCurrentForm();
     });
@@ -146,11 +149,11 @@ function renderVerList() {
   renderAddProdSelect();
 }
 
-function renderAddProdSelect() {
+export function renderAddProdSelect() {
   const sel = q('[data-slot="add-prod-select"]');
   if (!sel) return;
-  const added = new Set((state.orgVersions || []).map(v => v.name));
-  const orgField = state.currentForm && state.currentForm.fields.org;
+  const added = new Set((State.orgVersions || []).map(v => v.name));
+  const orgField = State.currentForm && State.currentForm.fields.org;
   const org = getOrg(orgField ? orgField.value : "");
   const full = getOrgVersions(org);
   sel.innerHTML = "";
@@ -166,21 +169,21 @@ function renderAddProdSelect() {
   if (btn) btn.disabled = (sel.options.length <= 1);
 }
 
-function addProductToCard() {
+export function addProductToCard() {
   const sel = q('[data-slot="add-prod-select"]');
   if (!sel) return;
   const name = sel.value; if (!name) return;
-  const orgField = state.currentForm && state.currentForm.fields.org;
+  const orgField = State.currentForm && State.currentForm.fields.org;
   const org = getOrg(orgField ? orgField.value : "");
   const full = getOrgVersions(org);
   const p = full.find(x => x.name === name);
-  if (!p || state.orgVersions.some(v => v.name === p.name)) return;
-  state.orgVersions.push({ id: Date.now(), name: p.name, ver: p.ver });
+  if (!p || State.orgVersions.some(v => v.name === p.name)) return;
+  State.orgVersions.push({ id: Date.now(), name: p.name, ver: p.ver });
   renderVerList();
   validateCurrentForm();
 }
 
-function updateAutoCalc(registry) {
+export function updateAutoCalc(registry) {
   if (!registry.fields.imp || !registry.fields.urg) return;
   const m = calcPriority(registry.fields.imp.value, registry.fields.urg.value);
   const prio = q('[data-auto="prio"]');

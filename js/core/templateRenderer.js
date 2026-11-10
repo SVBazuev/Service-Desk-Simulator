@@ -3,10 +3,12 @@
  * Domain templates (workflows, readonly, widgets, panel kinds) are
  * registered by the application via Extension API; core stays generic.
  */
-var TemplateRenderer = {
-  templates: {},   // filled via Extension.registerWorkflow
-  _widgets: {},    // filled via Extension.registerWidget
-  _readonly: {},   // filled via Extension.registerReadonly
+import { FormRenderer } from "./formRenderer.js";
+
+export const TemplateRenderer = {
+  templates: {},
+  _widgets: {},
+  _readonly: {},
 
   _panelKinds: {
     form: function(panel, schema, ticket, context, result) {

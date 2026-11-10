@@ -1,8 +1,11 @@
 /**
  * panels.js — Service Desk panel kinds (incoming, diagnostics) and
- * the switchDiagTab helper. Registered via Extension API so that
- * TemplateRenderer core stays domain-agnostic.
+ * the switchDiagTab helper. Registered via Extension API.
  */
+import { Extension } from "../core/extensions.js";
+import { DataStore } from "../core/dataStore.js";
+import { State } from "../core/state.js";
+import { q, getTicket, calcPriority } from "../utils.js";
 
 Extension.registerPanelKind("incoming", function(ticket) {
   const section = this._createPanel();
@@ -37,7 +40,7 @@ Extension.registerPanelKind("incoming", function(ticket) {
     dupBlock.innerHTML = `<b>Обратите внимание:</b> похоже, это повтор уже разобранных симптомов. Проверьте, не было ли подобного ранее, и есть ли Known Error с обходным решением.`;
     body.appendChild(dupBlock);
 
-    const prev = DataStore.getTicket(state.level, ticket.duplicateOf);
+    const prev = DataStore.getTicket(State.level, ticket.duplicateOf);
     const dupLink = document.createElement("div");
     dupLink.dataset.slot = "dup-link";
     dupLink.style.cssText = "margin-top:8px;font-size:13px;";
@@ -121,9 +124,8 @@ Extension.registerPanelKind("diagnostics", function(ticket) {
   return section;
 });
 
-// Domain helper — moved from app.js. Used by panel kind + onWorkClick.
-function switchDiagTab(tabId) {
-  const t = getTicket(state.currentId);
+export function switchDiagTab(tabId) {
+  const t = getTicket(State.currentId);
   if (!t || !t.diagnostics) return;
   const d = t.diagnostics.find(x => x.id === tabId);
   if (!d) return;

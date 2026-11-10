@@ -2,6 +2,38 @@
  * validators.js — Service Desk custom validation rules
  * registered via Extension API.
  */
+import { Extension } from "../core/extensions.js";
+import { DataStore } from "../core/dataStore.js";
+import { getOrg } from "../utils.js";
+import { PROBLEMS } from "../data-bundle.js";
+
+Extension.registerFieldFormatter("org", function(value, ticket) {
+  return {
+    display: getOrg(value)?.name || value,
+    explain: "Организация должна соответствовать обращению."
+  };
+});
+
+Extension.registerFieldFormatter("cont", function(value, ticket) {
+  return {
+    display: DataStore.getContacts().find(c => c.id === value)?.name || value,
+    explain: "Контактное лицо должно соответствовать обращению."
+  };
+});
+
+Extension.registerFieldFormatter("assignee", function(value, ticket) {
+  return {
+    display: DataStore.getEmployees().find(e => e.id === value)?.name || value,
+    explain: (ticket && ticket.explain) || ""
+  };
+});
+
+Extension.registerFieldFormatter("comment", function(value, ticket) {
+  return {
+    display: DataStore.getCommentsL2().find(c => c.id === value)?.text || value,
+    explain: "Комментарий должен соответствовать типу задачи."
+  };
+});
 
 Extension.registerValidator("problem_logic", function(ticket, formData, comparison, errs) {
   const outCorrect = formData.outcome === ticket.outcome.correct;
