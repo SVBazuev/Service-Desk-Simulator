@@ -7,5 +7,7 @@
     "ro-engineer": "readonly/engineer.html",
     "widget-versions": "widgets/versions.html",
     "widget-prio-hint": "widgets/prio-hint.html",
-    "widget-auto-calc": "widgets/auto-calc.html"
+    "widget-auto-calc": "widgets/auto-calc.html",
+    "panel-incoming": "panels/panel-incoming.html",
+    "panel-diagnostics": "panels/panel-diagnostics.html"
 }

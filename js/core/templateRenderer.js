@@ -148,15 +148,5 @@ export const TemplateRenderer = {
     const fn = this._panelKinds[panel.kind];
     if (!fn) throw new Error("TemplateRenderer: unknown panel kind '" + panel.kind + "'");
     return fn.call(this, panel, schema, ticket, context, result);
-  },
-
-  _createPanel: function(opts) {
-    const templateId = (opts && opts.footer) ? "panel" : "panel-no-footer";
-    return this.bindElement(templateId);
-  },
-
-  _esc: function(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g,
-      ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
 };

@@ -395,6 +395,34 @@ try {
 
   console.log("H.3b templates: widgets — OK");
 
+  // H.3c: panels templates
+  for (const id of ["panel-incoming", "panel-diagnostics"]) {
+    if (!TemplateRenderer._templateSources[id]) {
+      err(`H.3c: ${id} template not registered`);
+    }
+  }
+
+  // panel-incoming — все контрактные слоты присутствуют в шаблоне
+  const incEl = TemplateRenderer.bindElement("panel-incoming", {
+    slots: { kv: { html: "" }, text: "", "dup-select": { html: "" }, "clarify-btn": "" },
+    show: { "clarify-wrap": false, "clarify-block": false }
+  });
+  for (const slot of ["kv", "text", "dup-block", "dup-link", "dup-select", "dup-hint",
+                      "clarify-wrap", "clarify-btn", "clarify-block", "clarify-text"]) {
+    if (!incEl.querySelector(`[data-slot="${slot}"]`)) {
+      err(`H.3c: panel-incoming missing [data-slot=${slot}]`);
+    }
+  }
+
+  // panel-diagnostics — контракты и #diag-tabs id
+  const diagEl = TemplateRenderer.bindElement("panel-diagnostics");
+  if (!diagEl.querySelector("[data-slot='diag-tabs']")) err("H.3c: diag-tabs slot missing");
+  if (!diagEl.querySelector("[data-slot='diag-title']")) err("H.3c: diag-title slot missing");
+  if (!diagEl.querySelector("[data-slot='diag-content']")) err("H.3c: diag-content slot missing");
+  if (!diagEl.querySelector("[id='diag-tabs']")) err("H.3c: #diag-tabs id missing");
+
+  console.log("H.3c templates: panels — OK");
+
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);
   if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {
