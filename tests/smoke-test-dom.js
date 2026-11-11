@@ -423,6 +423,42 @@ try {
 
   console.log("H.3c templates: panels — OK");
 
+  // H.4: CSS artifact — tokens in :root, source rules inside @layer
+  const cssPath = path.join(ROOT, "dist/ludus.css");
+  if (!fs.existsSync(cssPath)) {
+    err("H.4: dist/ludus.css not built");
+  } else {
+    const cssText = fs.readFileSync(cssPath, "utf8");
+    if (!/:root\s*\{/.test(cssText)) {
+      err("H.4: dist/ludus.css missing :root block");
+    }
+    if (!cssText.includes("--bg: #f6f7f9")) {
+      err("H.4: dist/ludus.css missing --bg token");
+    }
+    if (!cssText.includes("--primary: #2563eb")) {
+      err("H.4: dist/ludus.css missing --primary token");
+    }
+    if (!/@layer\s+ludus\.components\s*\{/.test(cssText)) {
+      err("H.4: dist/ludus.css missing @layer ludus.components");
+    }
+    // Token block must precede the layer block: theme tokens
+    // are the sole source of visual values; @layer only holds
+    // rules that consume them.
+    const rootIdx = cssText.indexOf(":root");
+    const layerIdx = cssText.indexOf("@layer ludus.components");
+    if (rootIdx === -1 || layerIdx === -1 || rootIdx > layerIdx) {
+      err("H.4: :root must precede @layer ludus.components");
+    }
+  }
+
+  // H.4: source css has no :root (single source of truth)
+  const sourceCss = fs.readFileSync(path.join(ROOT, "css/style.css"), "utf8");
+  if (/:root\s*\{/.test(sourceCss)) {
+    err("H.4: css/style.css contains :root — tokens must live only in themes/default.json");
+  }
+
+  console.log("H.4 css: tokens + layer — OK");
+
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);
   if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {

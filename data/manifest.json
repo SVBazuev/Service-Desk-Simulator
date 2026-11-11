@@ -22,8 +22,15 @@
     "templates": {
         "index": "templates/index.json"
     },
+    "themes": {
+        "default": "themes/default.json"
+    },
+    "css": {
+        "source": "css/style.css"
+    },
     "output": {
         "bundle": "dist/data.js",
-        "templates": "dist/ludus-templates.js"
+        "templates": "dist/ludus-templates.js",
+        "css": "dist/ludus.css"
     }
 }

@@ -1,0 +1,15 @@
+{
+    "name": "default",
+    "tokens": {
+        "bg": "#f6f7f9",
+        "panel": "#ffffff",
+        "text": "#1f2328",
+        "sub": "#57606a",
+        "border": "#d0d7de",
+        "primary": "#2563eb",
+        "primary-hover": "#1d4ed8",
+        "ok": "#1a7f37",
+        "bad": "#d1242f",
+        "warn": "#9a6700"
+    }
+}
