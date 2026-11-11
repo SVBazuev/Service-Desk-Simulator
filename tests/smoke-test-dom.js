@@ -350,6 +350,51 @@ try {
 
   console.log("H.3a templates: binder + registerTemplates — OK");
 
+  // H.3b: widgets templates
+  for (const id of ["widget-versions", "widget-prio-hint", "widget-auto-calc"]) {
+    if (!TemplateRenderer._templateSources[id]) {
+      err(`H.3b: ${id} template not registered from build artifact`);
+    }
+  }
+
+  // widget-auto-calc — статичный, без слотов; bindElement даёт .auto-box
+  const autoEl = TemplateRenderer.bindElement("widget-auto-calc");
+  if (!autoEl.classList.contains("auto-box")) {
+    err("H.3b: widget-auto-calc root should be .auto-box");
+  }
+  if (!autoEl.querySelector('[data-auto="prio"]')) {
+    err("H.3b: widget-auto-calc missing data-auto=prio");
+  }
+  if (!autoEl.querySelector('[data-auto="react"]')) {
+    err("H.3b: widget-auto-calc missing data-auto=react");
+  }
+  if (!autoEl.querySelector('[data-auto="sol"]')) {
+    err("H.3b: widget-auto-calc missing data-auto=sol");
+  }
+
+  // widget-prio-hint — корень имеет data-slot="prio-hint"
+  const hintEl = TemplateRenderer.bindElement("widget-prio-hint");
+  if (hintEl.getAttribute("data-slot") !== "prio-hint") {
+    err("H.3b: widget-prio-hint root should be [data-slot=prio-hint]");
+  }
+  if (!hintEl.hasAttribute("style") || !hintEl.getAttribute("style").includes("display:none")) {
+    err("H.3b: widget-prio-hint should default hidden");
+  }
+
+  // widget-versions — контракты renderVerList
+  const versionsEl = TemplateRenderer.bindElement("widget-versions");
+  if (!versionsEl.querySelector('[data-slot="ver-list"]')) {
+    err("H.3b: widget-versions missing data-slot=ver-list");
+  }
+  if (!versionsEl.querySelector('[data-slot="add-prod-select"]')) {
+    err("H.3b: widget-versions missing data-slot=add-prod-select");
+  }
+  if (!versionsEl.querySelector('[data-action="add-prod"]')) {
+    err("H.3b: widget-versions missing data-action=add-prod");
+  }
+
+  console.log("H.3b templates: widgets — OK");
+
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);
   if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {

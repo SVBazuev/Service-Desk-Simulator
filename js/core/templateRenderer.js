@@ -114,7 +114,7 @@ export const TemplateRenderer = {
       result.registry = registry;
 
       for (const w of (panel.after || [])) {
-        const el = this._widgets[w](ticket, context, result);
+        const el = this._widgets[w].call(this, ticket, context, result);
         if (el) body.appendChild(el);
       }
 

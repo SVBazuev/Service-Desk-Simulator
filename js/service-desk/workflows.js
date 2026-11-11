@@ -64,43 +64,15 @@ Extension.registerReadonly("engineer", function(ticket) {
 });
 
 Extension.registerWidget("versions", function(ticket, context, result) {
-  const wrap = document.createElement("div");
-  wrap.style.marginTop = "12px";
-  wrap.innerHTML = `
-    <label class="form-field full">
-      <span class="form-label">Продукты и версии</span>
-      <div data-slot="ver-list" class="ver-list"></div>
-      <div class="ver-add-wrap">
-        <div class="ver-add-title">Добавить продукт</div>
-        <div class="ver-add-row">
-          <select data-slot="add-prod-select"></select>
-          <button type="button" data-action="add-prod" class="btn">Добавить продукт</button>
-        </div>
-      </div>
-    </label>`;
-  return wrap;
+  return this.bindElement("widget-versions");
 });
 
 Extension.registerWidget("prio-hint", function(ticket, context, result) {
-  const hint = document.createElement("div");
-  hint.className = "prio-hint";
-  hint.dataset.slot = "prio-hint";
-  hint.style.display = "none";
-  hint.innerHTML = `<b>Внимание:</b> Для «Запрос на обслуживание» и «Консультация» по умолчанию устанавливается средний приоритет. Измените вручную, если заказчик указал срочность.`;
-  return hint;
+  return this.bindElement("widget-prio-hint");
 });
 
 Extension.registerWidget("auto-calc", function(ticket, context, result) {
-  const auto = document.createElement("div");
-  auto.className = "auto-box";
-  auto.innerHTML = `
-    <div class="auto-title">Автоматический расчёт</div>
-    <div class="auto-grid">
-      <div class="auto-item"><div class="auto-l">Приоритет</div><div class="auto-v" data-auto="prio">-</div></div>
-      <div class="auto-item"><div class="auto-l">Срок реакции</div><div class="auto-v" data-auto="react">-</div></div>
-      <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" data-auto="sol">-</div></div>
-    </div>`;
-  return auto;
+  return this.bindElement("widget-auto-calc");
 });
 
 Extension.registerSlot("orgVersions", []);
