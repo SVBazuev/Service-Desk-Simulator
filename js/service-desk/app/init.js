@@ -3,6 +3,7 @@
  * Imports side-effect modules (validators, middleware) so their
  * Extension registrations run at startup.
  */
+import { templates } from "../../../dist/ludus-templates.js";
 import { State } from "../../core/state.js";
 import { DataStore } from "../../core/dataStore.js";
 import { Extension } from "../../core/extensions.js";
@@ -43,6 +44,8 @@ function restart() {
 }
 
 export function init() {
+  Extension.registerTemplates(templates);
+
   bootstrapWorkloads();
   bootstrapKb();
 

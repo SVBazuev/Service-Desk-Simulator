@@ -2,23 +2,91 @@
  * templateRenderer.js — schema-driven UI shell (panels + form + widgets).
  * Domain templates (workflows, readonly, widgets, panel kinds) are
  * registered by the application via Extension API; core stays generic.
+ *
+ * Two registries are distinct:
+ *   _templateSources — HTML templates, registered via registerTemplates.
+ *   templates        — workflow descriptors, registered via registerWorkflow.
  */
 import { FormRenderer } from "./formRenderer.js";
 
 export const TemplateRenderer = {
-  templates: {},
-  _widgets: {},
-  _readonly: {},
+  templates: {},          // workflow descriptors (via Extension.registerWorkflow)
+  _widgets: {},           // widget factories (via Extension.registerWidget)
+  _readonly: {},          // readonly block factories (via Extension.registerReadonly)
+  _templateSources: {},   // HTML templates (via Extension.registerTemplates)
+  _parsedCache: {},       // parsed <template> elements, keyed by id
+
+  registerTemplates: function(source) {
+    if (!source || typeof source !== "object") return;
+    for (const [id, html] of Object.entries(source)) {
+      if (typeof html !== "string" || html.trim() === "") {
+        console.warn(`[TemplateRenderer] skip empty template '${id}'`);
+        continue;
+      }
+      this._templateSources[id] = html;
+      delete this._parsedCache[id];
+    }
+  },
+
+  _getParsedTemplate: function(templateId) {
+    if (this._parsedCache[templateId]) return this._parsedCache[templateId];
+    const html = this._templateSources[templateId];
+    if (html === undefined) {
+      throw new Error(`TemplateRenderer: unknown template '${templateId}'`);
+    }
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    this._parsedCache[templateId] = t;
+    return t;
+  },
+
+  bind: function(templateId, opts) {
+    opts = opts || {};
+    const tpl = this._getParsedTemplate(templateId);
+    const frag = tpl.content.cloneNode(true);
+
+    for (const [slotId, value] of Object.entries(opts.slots || {})) {
+      const el = frag.querySelector(`[data-slot="${slotId}"]`);
+      if (!el) {
+        console.warn(`[TemplateRenderer] slot '${slotId}' not found in '${templateId}'`);
+        continue;
+      }
+      if (typeof value === "string") el.textContent = value;
+      else if (typeof value === "function") value(el);
+      else if (value && typeof value === "object" && "html" in value) el.innerHTML = value.html;
+    }
+
+    for (const [slotId, visible] of Object.entries(opts.show || {})) {
+      const el = frag.querySelector(`[data-slot="${slotId}"]`);
+      if (el) el.hidden = !visible;
+    }
+
+    for (const [slotId, attrs] of Object.entries(opts.attrs || {})) {
+      const el = frag.querySelector(`[data-slot="${slotId}"]`);
+      if (!el) continue;
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    }
+
+    if (typeof opts.onMount === "function") opts.onMount(frag);
+    return frag;
+  },
+
+  bindElement: function(templateId, opts) {
+    const frag = this.bind(templateId, opts);
+    if (frag.childNodes.length !== 1) {
+      throw new Error(`TemplateRenderer.bindElement: template '${templateId}' must have exactly one root element`);
+    }
+    return frag.firstElementChild;
+  },
 
   _panelKinds: {
     form: function(panel, schema, ticket, context, result) {
-      const section = this._createPanel({ footer: true });
-      section.querySelector(".panel-title").textContent = panel.title || "Карточка";
+      const section = this.bindElement("panel", { slots: { title: panel.title || "Карточка" } });
       const body = section.querySelector(".panel-body");
       const footer = section.querySelector(".panel-footer");
 
       if (panel.readonly && this._readonly[panel.readonly]) {
-        const ro = this._readonly[panel.readonly](ticket);
+        const ro = this._readonly[panel.readonly].call(this, ticket);
         if (ro) body.appendChild(ro);
       }
 
@@ -27,20 +95,8 @@ export const TemplateRenderer = {
       body.appendChild(formContainer);
       result.formContainer = formContainer;
 
-      const submitBtn = document.createElement("button");
-      submitBtn.id = "btn-work-submit";
-      submitBtn.className = "btn primary";
-      submitBtn.disabled = true;
-      submitBtn.dataset.action = "submit";
+      const submitBtn = footer.querySelector('[data-slot="submit-btn"]');
       submitBtn.textContent = panel.submitLabel || "Сохранить";
-
-      const cancelBtn = document.createElement("button");
-      cancelBtn.className = "btn";
-      cancelBtn.dataset.action = "cancel";
-      cancelBtn.textContent = panel.cancelLabel || "Отменить";
-
-      footer.appendChild(cancelBtn);
-      footer.appendChild(submitBtn);
       result.submitBtn = submitBtn;
 
       const hintEl = document.createElement("div");
@@ -95,21 +151,8 @@ export const TemplateRenderer = {
   },
 
   _createPanel: function(opts) {
-    const section = document.createElement("section");
-    section.className = "panel";
-    const header = document.createElement("header");
-    header.className = "panel-header";
-    header.innerHTML = `<div class="panel-title"></div>`;
-    section.appendChild(header);
-    const body = document.createElement("div");
-    body.className = "panel-body";
-    section.appendChild(body);
-    if (opts && opts.footer) {
-      const footer = document.createElement("footer");
-      footer.className = "panel-footer";
-      section.appendChild(footer);
-    }
-    return section;
+    const templateId = (opts && opts.footer) ? "panel" : "panel-no-footer";
+    return this.bindElement(templateId);
   },
 
   _esc: function(s) {

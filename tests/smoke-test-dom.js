@@ -33,6 +33,7 @@ const { openWork, renderQueue } = await import("../js/service-desk/app/router.js
 const { requestEngineerClarify, validateCurrentForm } = await import("../js/service-desk/app/forms.js");
 const { runAutotests, runAutotestsL2, runAutotestsEngineer } = await import("../js/autotests.js");
 const { hideModal } = await import("../js/utils.js");
+const { TemplateRenderer } = await import("../js/core/templateRenderer.js");
 const bundle = await import("../dist/data.js");
 const { DataStore } = await import("../js/core/dataStore.js");
 
@@ -266,6 +267,88 @@ try {
   }
 
   console.log("G.1c progressStore: pluggable store — OK");
+
+  // H.3a: templates + binder
+  if (!TemplateRenderer._templateSources["ro-registrar"]) {
+    err("H.3a: ro-registrar template not registered from build artifact");
+  }
+  if (!TemplateRenderer._templateSources["panel"]) {
+    err("H.3a: panel template not registered from build artifact");
+  }
+
+  TemplateRenderer.registerTemplates({
+    "h3-test": '<div class="wrap"><span data-slot="label" hidden></span><a data-slot="link" href="#" data-x="a">x</a></div>'
+  });
+
+  // slots: string
+  const frag1 = TemplateRenderer.bind("h3-test", {
+    slots: { label: "hello", link: "go" }
+  });
+  if (frag1.firstElementChild.querySelector('[data-slot="label"]').textContent !== "hello") {
+    err("H.3a: slots string not applied");
+  }
+  if (frag1.firstElementChild.querySelector('[data-slot="link"]').textContent !== "go") {
+    err("H.3a: slots on <a> not applied");
+  }
+
+  // show: true removes hidden
+  const frag2 = TemplateRenderer.bind("h3-test", { show: { label: true } });
+  if (frag2.firstElementChild.querySelector('[data-slot="label"]').hidden !== false) {
+    err("H.3a: show:true should remove hidden");
+  }
+  // show: false sets hidden
+  const frag2b = TemplateRenderer.bind("h3-test", { show: { label: false } });
+  if (frag2b.firstElementChild.querySelector('[data-slot="label"]').hidden !== true) {
+    err("H.3a: show:false should set hidden");
+  }
+
+  // attrs
+  const frag3 = TemplateRenderer.bind("h3-test", {
+    attrs: { link: { "data-x": "b", "href": "/new" } }
+  });
+  const link3 = frag3.firstElementChild.querySelector('[data-slot="link"]');
+  if (link3.getAttribute("data-x") !== "b") err("H.3a: attrs data-x");
+  if (link3.getAttribute("href") !== "/new") err("H.3a: attrs href");
+
+  // slots: { html }
+  const frag4 = TemplateRenderer.bind("h3-test", {
+    slots: { label: { html: "<b>bold</b>" } }
+  });
+  if (!frag4.firstElementChild.querySelector('[data-slot="label"]').innerHTML.includes("<b>bold</b>")) {
+    err("H.3a: slots {html} not applied");
+  }
+
+  // unknown template throws
+  try {
+    TemplateRenderer.bind("nonexistent-h3a");
+    err("H.3a: bind on unknown template should throw");
+  } catch (e) { /* expected */ }
+
+  // clone — два вызова дают независимые фрагменты
+  const fragA = TemplateRenderer.bind("h3-test", { slots: { label: "A" } });
+  const fragB = TemplateRenderer.bind("h3-test", { slots: { label: "B" } });
+  if (fragA.firstElementChild.querySelector('[data-slot="label"]').textContent !== "A") {
+    err("H.3a: clone A");
+  }
+  if (fragB.firstElementChild.querySelector('[data-slot="label"]').textContent !== "B") {
+    err("H.3a: clone B");
+  }
+
+  // bindElement — ровно один корень
+  const singleEl = TemplateRenderer.bindElement("h3-test");
+  if (!singleEl || singleEl.tagName !== "DIV") err("H.3a: bindElement root");
+
+  // bindElement на multi-root → throws (registerTemplates с одним корнем, поэтому
+  // проверяем через invalid-шаблон)
+  TemplateRenderer.registerTemplates({
+    "h3-multi": '<div></div><div></div>'
+  });
+  try {
+    TemplateRenderer.bindElement("h3-multi");
+    err("H.3a: bindElement on multi-root should throw");
+  } catch (e) { /* expected */ }
+
+  console.log("H.3a templates: binder + registerTemplates — OK");
 
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);

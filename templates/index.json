@@ -1,0 +1,8 @@
+{
+    "panel": "shell/panel.html",
+    "panel-no-footer": "shell/panel-no-footer.html",
+    "form-grid": "shell/form-grid.html",
+    "ro-registrar": "readonly/registrar.html",
+    "ro-dispatcher": "readonly/dispatcher.html",
+    "ro-engineer": "readonly/engineer.html"
+}

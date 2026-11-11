@@ -4,7 +4,7 @@
   "description": "Service Desk Simulator",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-data.js",
+    "build": "node scripts/build-data.js && node scripts/build-templates.js",
     "pretest": "npm run build",
     "test": "node tests/smoke-test-dom.js"
   },

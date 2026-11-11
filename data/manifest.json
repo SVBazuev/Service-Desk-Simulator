@@ -19,7 +19,11 @@
         "index": "data/levels/index.json",
         "manifestsDir": "data/levels"
     },
+    "templates": {
+        "index": "templates/index.json"
+    },
     "output": {
-        "bundle": "dist/data.js"
+        "bundle": "dist/data.js",
+        "templates": "dist/ludus-templates.js"
     }
 }

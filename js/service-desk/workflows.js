@@ -44,40 +44,23 @@ Extension.registerWorkflow("engineer", {
 });
 
 Extension.registerReadonly("registrar", function(ticket) {
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">текущий регистратор</span></div>
-    <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-    <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
-  return grid;
+  return this.bindElement("ro-registrar", { slots: { id: ticket.id } });
 });
 
 Extension.registerReadonly("dispatcher", function(ticket) {
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">Тимлид команды Бета</span></div>
-    <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-    <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
-  return grid;
+  return this.bindElement("ro-dispatcher", { slots: { id: ticket.id } });
 });
 
 Extension.registerReadonly("engineer", function(ticket) {
   const m = calcPriority(ticket.imp, ticket.urg);
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val">${TemplateRenderer._esc(ticket.ver)}</span></div>
-    <div class="ro-row"><span class="ro-key">Срочность / Важность</span><span class="ro-val">${TemplateRenderer._esc(ticket.imp)} / ${TemplateRenderer._esc(ticket.urg)}</span></div>
-    <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val">${m ? TemplateRenderer._esc(m.react + " / " + m.sol) : "-"}</span></div>`;
-  return grid;
+  return this.bindElement("ro-engineer", {
+    slots: {
+      id: ticket.id,
+      ver: ticket.ver,
+      "imp-urg": ticket.imp + " / " + ticket.urg,
+      sla: m ? m.react + " / " + m.sol : "-"
+    }
+  });
 });
 
 Extension.registerWidget("versions", function(ticket, context, result) {
