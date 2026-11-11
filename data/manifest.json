@@ -1,0 +1,25 @@
+{
+    "name": "service-desk-simulator",
+    "version": "1.0.0",
+    "sources": {
+        "ORGS": "data/common/organizations.json",
+        "CONTACTS": "data/common/contacts.json",
+        "EMPLOYEES": "data/common/employees.json",
+        "EMPLOYEES_L3": "data/common/employees-l3.json",
+        "COMMENTS_L2": "data/common/comments-l2.json",
+        "TAX": "data/common/taxonomy.json",
+        "MATRIX": "data/common/matrix.json",
+        "PROBLEM_METHODS": "data/common/problem-methods.json",
+        "ARCHIVE_INCIDENTS": "data/common/archive-incidents.json",
+        "INTROS": "data/common/intros.json",
+        "PROBLEMS": "data/problems.json",
+        "KB_L3": "data/kb-l3.json"
+    },
+    "levels": {
+        "index": "data/levels/index.json",
+        "manifestsDir": "data/levels"
+    },
+    "output": {
+        "bundle": "js/data-bundle.js"
+    }
+}

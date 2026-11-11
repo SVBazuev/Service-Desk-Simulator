@@ -6,57 +6,50 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, "..");
 
-const COMMON_JSON = {
-  ORGS: "data/common/organizations.json",
-  CONTACTS: "data/common/contacts.json",
-  EMPLOYEES: "data/common/employees.json",
-  EMPLOYEES_L3: "data/common/employees-l3.json",
-  COMMENTS_L2: "data/common/comments-l2.json",
-  TAX: "data/common/taxonomy.json",
-  MATRIX: "data/common/matrix.json",
-  PROBLEM_METHODS: "data/common/problem-methods.json",
-  ARCHIVE_INCIDENTS: "data/common/archive-incidents.json",
-  INTROS: "data/common/intros.json",
-  PROBLEMS: "data/problems.json",
-  KB_L3: "data/kb-l3.json"
-};
-
-const LEVELS_INDEX = "data/levels/index.json";
-
-const out = {};
-for (const [key, file] of Object.entries(COMMON_JSON)) {
-  out[key] = JSON.parse(fs.readFileSync(path.join(ROOT, file), "utf8"));
+function readJson(relPath) {
+  return JSON.parse(fs.readFileSync(path.join(ROOT, relPath), "utf8"));
 }
 
-const levelIndex = JSON.parse(fs.readFileSync(path.join(ROOT, LEVELS_INDEX), "utf8"));
+const manifest = readJson("data/manifest.json");
+
+// --- Common sources (order preserved from manifest) ---
+const out = {};
+for (const [key, relPath] of Object.entries(manifest.sources)) {
+  out[key] = readJson(relPath);
+}
+
+// --- Levels ---
+const levelIndex = readJson(manifest.levels.index);
+const manifestsDir = manifest.levels.manifestsDir;
+
 const levelManifests = [];
 const levelData = {};
 
 for (const manifestFile of levelIndex.levels) {
-  const manifestPath = path.join(ROOT, "data/levels", manifestFile);
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const levelManifest = readJson(path.join(manifestsDir, manifestFile));
 
-  const tickets = JSON.parse(fs.readFileSync(path.join(ROOT, manifest.tickets), "utf8"));
-  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, manifest.schema), "utf8"));
+  const tickets = readJson(levelManifest.tickets);
+  const schema = readJson(levelManifest.schema);
 
-  const ticketsKey = manifest.id === 1 ? "TICKETS" : `TICKETS_L${manifest.id}`;
-  const schemaKey = `SCHEMA_L${manifest.id}`;
+  const ticketsKey = levelManifest.id === 1 ? "TICKETS" : `TICKETS_L${levelManifest.id}`;
+  const schemaKey = `SCHEMA_L${levelManifest.id}`;
   out[ticketsKey] = tickets;
   out[schemaKey] = schema;
 
   levelManifests.push({
-    id: manifest.id,
-    title: manifest.title,
-    desc: manifest.desc,
-    workflow: manifest.workflow || null,
-    queue: manifest.queue || null,
-    intro: manifest.intro || null,
-    workTitle: manifest.workTitle || null
+    id: levelManifest.id,
+    title: levelManifest.title,
+    desc: levelManifest.desc,
+    workflow: levelManifest.workflow || null,
+    queue: levelManifest.queue || null,
+    intro: levelManifest.intro || null,
+    workTitle: levelManifest.workTitle || null
   });
-  levelData[manifest.id] = { tickets, schema };
+  levelData[levelManifest.id] = { tickets, schema };
 }
 levelManifests.sort((a, b) => a.id - b.id);
 
+// --- Schema options validation ---
 function validateSchemaOptions(name, schema) {
   if (!schema || !Array.isArray(schema.fields)) return;
   const walk = (fields) => {
@@ -82,6 +75,7 @@ for (const [key, schema] of Object.entries(out)) {
   if (key.startsWith("SCHEMA_")) validateSchemaOptions(key, schema);
 }
 
+// --- Emit bundle ---
 const banner = "// АВТОГЕНЕРАЦИЯ! Не редактируйте этот файл руками. Меняйте JSON в папке data/ и запускайте npm run build\n";
 let code = banner;
 
@@ -98,8 +92,8 @@ for (const [id] of Object.entries(levelData)) {
 }
 code += "};\n\n";
 
-const outDir = path.join(ROOT, 'js');
+const outPath = path.join(ROOT, manifest.output.bundle);
+const outDir = path.dirname(outPath);
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-const outPath = path.join(outDir, 'data-bundle.js');
 fs.writeFileSync(outPath, code, 'utf8');
 console.log(`✅ Успешно собран: ${outPath}`);
