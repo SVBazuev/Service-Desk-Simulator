@@ -10,7 +10,7 @@ import {
   getOrg, getContactsByOrg, getCatList, getSubList, getOrgVersions, getTicket
 } from "../../utils.js";
 import { renderVerList, updateAutoCalc } from "../workflows.js";
-import { PROBLEMS } from "../../data-bundle.js";
+import { PROBLEMS } from "../../../dist/data.js";
 
 export function populateSelects(registry, t, workflow) {
   const f = registry.fields;

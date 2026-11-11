@@ -20,6 +20,6 @@
         "manifestsDir": "data/levels"
     },
     "output": {
-        "bundle": "js/data-bundle.js"
+        "bundle": "dist/data.js"
     }
 }

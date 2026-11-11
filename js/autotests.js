@@ -7,7 +7,7 @@ import {
   TICKETS, TICKETS_L2, TICKETS_L3,
   ORGS, EMPLOYEES, EMPLOYEES_L3,
   COMMENTS_L2, PROBLEM_METHODS, PROBLEMS, CONTACTS
-} from "./data-bundle.js";
+} from "../dist/data.js";
 import {
   escapeHtml, hideModal, showModal, showScreen, getOrg, getContactsByOrg
 } from "./utils.js";

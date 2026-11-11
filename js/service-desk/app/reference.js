@@ -5,7 +5,7 @@
 import { State } from "../../core/state.js";
 import { DataStore } from "../../core/dataStore.js";
 import { showModal, getContactsByOrg } from "../../utils.js";
-import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../data-bundle.js";
+import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../../dist/data.js";
 
 export function openOrgList() {
   const tbody = document.getElementById("org-list-body");

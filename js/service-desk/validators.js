@@ -5,7 +5,7 @@
 import { Extension } from "../core/extensions.js";
 import { DataStore } from "../core/dataStore.js";
 import { getOrg } from "../utils.js";
-import { PROBLEMS } from "../data-bundle.js";
+import { PROBLEMS } from "../../dist/data.js";
 
 Extension.registerFieldFormatter("org", function(value, ticket) {
   return {

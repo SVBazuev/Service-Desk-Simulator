@@ -33,7 +33,7 @@ const { openWork, renderQueue } = await import("../js/service-desk/app/router.js
 const { requestEngineerClarify, validateCurrentForm } = await import("../js/service-desk/app/forms.js");
 const { runAutotests, runAutotestsL2, runAutotestsEngineer } = await import("../js/autotests.js");
 const { hideModal } = await import("../js/utils.js");
-const bundle = await import("../js/data-bundle.js");
+const bundle = await import("../dist/data.js");
 const { DataStore } = await import("../js/core/dataStore.js");
 
 let fail = 0;

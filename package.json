@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-data.js",
+    "pretest": "npm run build",
     "test": "node tests/smoke-test-dom.js"
   },
   "author": "",

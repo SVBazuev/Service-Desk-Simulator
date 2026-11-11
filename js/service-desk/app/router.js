@@ -20,7 +20,7 @@ import {
 import { renderVerList, addProductToCard, updateAutoCalc } from "../workflows.js";
 import { switchDiagTab } from "../panels.js";
 import { makeSnapshot } from "./levels.js";
-import { CONTACTS } from "../../data-bundle.js";
+import { CONTACTS } from "../../../dist/data.js";
 
 export function onWorkClick(e) {
   const t = e.target.closest('[data-action]');

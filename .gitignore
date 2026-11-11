@@ -11,3 +11,6 @@ Thumbs.db
 
 # Dev tools
 .dev_tools/
+
+# Build artifacts
+dist/
