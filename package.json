@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Service Desk Simulator",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "node scripts/build-data.js && node scripts/build-templates.js && node scripts/build-css.js",
     "pretest": "npm run build",
@@ -10,6 +13,9 @@
   },
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "@ludus/core": "*"
+  },
   "devDependencies": {
     "jsdom": "^26.1.0"
   }

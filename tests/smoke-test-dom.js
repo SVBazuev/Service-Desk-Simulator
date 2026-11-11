@@ -24,18 +24,18 @@ global.localStorage = {
   clear() { this.store = {}; }
 };
 
-const { State } = await import("../js/core/state.js");
-const { ProgressStore } = await import("../js/core/progressStore.js");
-const { Extension } = await import("../js/core/extensions.js");
+const { State } = await import("@ludus/core/js/state.js");
+const { DataStore } = await import("@ludus/core/js/dataStore.js");
+const { Extension } = await import("@ludus/core/js/extensions.js");
+const { ProgressStore } = await import("@ludus/core/js/progressStore.js");
+const { TemplateRenderer } = await import("@ludus/core/js/templateRenderer.js");
 const { init } = await import("../js/service-desk/app/init.js");
 const { submitLevel } = await import("../js/service-desk/app/submits.js");
 const { openWork, renderQueue } = await import("../js/service-desk/app/router.js");
 const { requestEngineerClarify, validateCurrentForm } = await import("../js/service-desk/app/forms.js");
 const { runAutotests, runAutotestsL2, runAutotestsEngineer } = await import("../js/autotests.js");
 const { hideModal } = await import("../js/utils.js");
-const { TemplateRenderer } = await import("../js/core/templateRenderer.js");
 const bundle = await import("../dist/data.js");
-const { DataStore } = await import("../js/core/dataStore.js");
 
 let fail = 0;
 const err = (m) => { console.error("FAIL:", m); fail++; };

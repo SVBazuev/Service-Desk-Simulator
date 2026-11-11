@@ -4,9 +4,9 @@
  * Extension registrations run at startup.
  */
 import { templates } from "../../../dist/ludus-templates.js";
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
-import { Extension } from "../../core/extensions.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { Extension } from "@ludus/core/js/extensions.js";
 import { showScreen, hideModal } from "../../utils.js";
 import "../validators.js";
 import "../middleware.js";

@@ -3,9 +3,9 @@
  * the switchDiagTab helper. Both panel kinds are binder-driven:
  * structure lives in templates/panels/*.html, panels.js only populates.
  */
-import { Extension } from "../core/extensions.js";
-import { DataStore } from "../core/dataStore.js";
-import { State } from "../core/state.js";
+import { Extension } from "@ludus/core/js/extensions.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { State } from "@ludus/core/js/state.js";
 import { q, getTicket, calcPriority, escapeHtml } from "../utils.js";
 
 function buildKvHtml(ticket) {

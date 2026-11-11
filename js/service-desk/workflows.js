@@ -2,10 +2,10 @@
  * workflows.js — Service Desk workflow descriptors, readonly blocks,
  * widgets, state slots, and helpers that operate on them.
  */
-import { Extension } from "../core/extensions.js";
-import { TemplateRenderer } from "../core/templateRenderer.js";
-import { DataStore } from "../core/dataStore.js";
-import { State } from "../core/state.js";
+import { Extension } from "@ludus/core/js/extensions.js";
+import { TemplateRenderer } from "@ludus/core/js/templateRenderer.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { State } from "@ludus/core/js/state.js";
 import { q, getOrg, getOrgVersions, calcPriority } from "../utils.js";
 import { validateCurrentForm } from "./app/forms.js";
 

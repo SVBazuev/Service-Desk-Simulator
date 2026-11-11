@@ -1,11 +1,11 @@
 /**
  * submits.js — single submit pipeline for all workflows.
  */
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
-import { FormRenderer } from "../../core/formRenderer.js";
-import { Validator } from "../../core/validator.js";
-import { Extension } from "../../core/extensions.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { FormRenderer } from "@ludus/core/js/formRenderer.js";
+import { Validator } from "@ludus/core/js/validator.js";
+import { Extension } from "@ludus/core/js/extensions.js";
 import { q, showModal, getTicket } from "../../utils.js";
 import { makeSnapshot } from "./levels.js";
 

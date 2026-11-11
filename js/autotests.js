@@ -2,7 +2,7 @@
  * autotests.js — in-UI positive + negative smoke tests for L1/L2/L3.
  * G.1e: exported for external test harnesses.
  */
-import { State } from "./core/state.js";
+import { State } from "@ludus/core/js/state.js";
 import {
   TICKETS, TICKETS_L2, TICKETS_L3,
   ORGS, EMPLOYEES, EMPLOYEES_L3,

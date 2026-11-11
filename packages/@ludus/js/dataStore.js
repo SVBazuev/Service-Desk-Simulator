@@ -6,7 +6,7 @@ import {
   ORGS, CONTACTS, EMPLOYEES, EMPLOYEES_L3, COMMENTS_L2,
   INTROS, TAX, MATRIX, LEVELS, LEVEL_DATA,
   PROBLEMS, KB_L3, PROBLEM_METHODS
-} from "../../dist/data.js";
+} from "../../../dist/data.js";
 
 export const DataStore = {
   getOrgs: () => ORGS,
