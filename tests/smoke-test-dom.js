@@ -35,7 +35,7 @@ const { openWork, renderQueue } = await import("../js/service-desk/app/router.js
 const { requestEngineerClarify, validateCurrentForm } = await import("../js/service-desk/app/forms.js");
 const { runAutotests, runAutotestsL2, runAutotestsEngineer } = await import("../js/autotests.js");
 const { hideModal } = await import("../js/utils.js");
-const bundle = await import("../dist/data.js");
+const bundle = await import("../build/data.js");
 
 let fail = 0;
 const err = (m) => { console.error("FAIL:", m); fail++; };
@@ -424,22 +424,22 @@ try {
   console.log("H.3c templates: panels — OK");
 
   // H.4: CSS artifact — tokens in :root, source rules inside @layer
-  const cssPath = path.join(ROOT, "dist/ludus.css");
+  const cssPath = path.join(ROOT, "build/ludus.css");
   if (!fs.existsSync(cssPath)) {
-    err("H.4: dist/ludus.css not built");
+    err("H.4: build/ludus.css not built");
   } else {
     const cssText = fs.readFileSync(cssPath, "utf8");
     if (!/:root\s*\{/.test(cssText)) {
-      err("H.4: dist/ludus.css missing :root block");
+      err("H.4: build/ludus.css missing :root block");
     }
     if (!cssText.includes("--bg: #f6f7f9")) {
-      err("H.4: dist/ludus.css missing --bg token");
+      err("H.4: build/ludus.css missing --bg token");
     }
     if (!cssText.includes("--primary: #2563eb")) {
-      err("H.4: dist/ludus.css missing --primary token");
+      err("H.4: build/ludus.css missing --primary token");
     }
     if (!/@layer\s+ludus\.components\s*\{/.test(cssText)) {
-      err("H.4: dist/ludus.css missing @layer ludus.components");
+      err("H.4: build/ludus.css missing @layer ludus.components");
     }
     // Token block must precede the layer block: theme tokens
     // are the sole source of visual values; @layer only holds
@@ -458,6 +458,80 @@ try {
   }
 
   console.log("H.4 css: tokens + layer — OK");
+
+  // H.6: packaged deployable under dist/<app>/
+  const appDist = path.join(ROOT, "dist", "service-desk-simulator");
+  if (!fs.existsSync(appDist)) {
+    err("H.6: dist/service-desk-simulator not built");
+  } else {
+    const required = [
+      "index.html",
+      "build/data.js",
+      "build/ludus-templates.js",
+      "build/ludus.css",
+      "js/app.js",
+      "js/utils.js",
+      "js/autotests.js",
+      "js/service-desk/app/init.js",
+      "packages/@ludus/js/state.js",
+      "packages/@ludus/js/dataStore.js",
+      "packages/@ludus/js/templateRenderer.js"
+    ];
+    for (const rel of required) {
+      const abs = path.join(appDist, rel);
+      if (!fs.existsSync(abs)) {
+        err(`H.6: packaged file missing: ${rel}`);
+      }
+    }
+
+    // index.html in the package must reference the packaged CSS,
+    // the module entry, and expose the @ludus/core import map.
+    const pkgIndex = fs.readFileSync(path.join(appDist, "index.html"), "utf8");
+    if (!pkgIndex.includes('href="build/ludus.css"')) {
+      err("H.6: packaged index.html must reference build/ludus.css");
+    }
+    if (!pkgIndex.includes('type="module"')) {
+      err("H.6: packaged index.html must have type=\"module\" entry");
+    }
+    if (!pkgIndex.includes('type="importmap"')) {
+      err("H.6: packaged index.html must include importmap");
+    }
+    if (!pkgIndex.includes('"@ludus/core/js/": "./packages/@ludus/js/"')) {
+      err("H.6: packaged importmap must map @ludus/core/js/ → ./packages/@ludus/js/");
+    }
+
+    // Data artifact is ESM with named exports, not a var bundle.
+    const pkgData = fs.readFileSync(path.join(appDist, "build", "data.js"), "utf8");
+    if (!pkgData.includes("export const ORGS")) {
+      err("H.6: packaged data.js must export ORGS");
+    }
+
+    // Templates artifact carries the same count as the source build.
+    const pkgTemplates = fs.readFileSync(path.join(appDist, "build", "ludus-templates.js"), "utf8");
+    const tplCount = (pkgTemplates.match(/^\s+"[^"]+":\s+"/gm) || []).length;
+    if (tplCount < 11) {
+      err(`H.6: packaged ludus-templates.js expected ≥11 templates, found ${tplCount}`);
+    }
+
+    // CSS artifact: tokens + layer, same invariant as H.4.
+    const pkgCss = fs.readFileSync(path.join(appDist, "build", "ludus.css"), "utf8");
+    if (!/:root\s*\{/.test(pkgCss) || !/@layer\s+ludus\.components\s*\{/.test(pkgCss)) {
+      err("H.6: packaged ludus.css missing :root or @layer ludus.components");
+    }
+  }
+
+  // H.6: ludus.config.json is valid and its output path is the one we check.
+  const ludusConfig = JSON.parse(
+    fs.readFileSync(path.join(ROOT, "ludus.config.json"), "utf8")
+  );
+  if (ludusConfig.output !== "dist/service-desk-simulator") {
+    err(`H.6: ludus.config.json output expected "dist/service-desk-simulator", got "${ludusConfig.output}"`);
+  }
+  if (!ludusConfig.app || !ludusConfig.app.entry) {
+    err("H.6: ludus.config.json missing app.entry");
+  }
+
+  console.log("H.6 packager: dist/service-desk-simulator — OK");
 
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);

@@ -5,7 +5,7 @@
 import { State } from "@ludus/core/js/state.js";
 import { DataStore } from "@ludus/core/js/dataStore.js";
 import { showModal, getContactsByOrg } from "../../utils.js";
-import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../../dist/data.js";
+import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../../build/data.js";
 
 export function openOrgList() {
   const tbody = document.getElementById("org-list-body");

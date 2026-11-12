@@ -1,0 +1,13 @@
+{
+    "app": {
+        "name": "service-desk-simulator",
+        "entry": "js/app.js",
+        "index": "index.html"
+    },
+    "data": { "manifest": "data/manifest.json" },
+    "templates": { "index": "templates/index.json" },
+    "theme": "themes/default.json",
+    "css": { "source": "css/style.css" },
+    "core": { "package": "packages/@ludus" },
+    "output": "dist/service-desk-simulator"
+}

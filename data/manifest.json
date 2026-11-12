@@ -29,8 +29,8 @@
         "source": "css/style.css"
     },
     "output": {
-        "bundle": "dist/data.js",
-        "templates": "dist/ludus-templates.js",
-        "css": "dist/ludus.css"
+        "bundle": "build/data.js",
+        "templates": "build/ludus-templates.js",
+        "css": "build/ludus.css"
     }
 }

@@ -3,7 +3,7 @@
  * Imports side-effect modules (validators, middleware) so their
  * Extension registrations run at startup.
  */
-import { templates } from "../../../dist/ludus-templates.js";
+import { templates } from "../../../build/ludus-templates.js";
 import { State } from "@ludus/core/js/state.js";
 import { DataStore } from "@ludus/core/js/dataStore.js";
 import { Extension } from "@ludus/core/js/extensions.js";
