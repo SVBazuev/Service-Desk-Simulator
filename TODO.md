@@ -180,12 +180,30 @@ Ludus = generic core + явные швы + build-артефакты. Прило�
     байт-в-байт), zero runtime CSS, zero runtime HTML,
     токены — единственный источник правды о визуальном.
 
-- ☐ **Commit H.7 — integration test «one core, many dists».**
-  - ☐ Один `@ludus/core`, два `dist/<app>/` (service-desk
-    + минимальный пример), оба работают.
-  - ☐ Доказывает: `@ludus/core` — не singleton, а
-    namespace-пакет; runtime переиспользуется без
-    регрессий.
+- ☐ **Battle test в отдельном репозитории (`cheat_linux` fork).**
+  Реальный второй продукт на `@ludus/core` — не имитация
+  второго приложения в том же репо. Источник данных:
+  `cheat_linux.html` (Debian Knowledge Base, ~15 секций ×
+  ~100 команд, поиск, фильтр риска, тултип, copy).
+  - ☐ Отдельный git-репозиторий (fork).
+  - ☐ Данные из HTML → JSON (секции, команды, теги).
+  - ☐ `@ludus/core` — через один из вариантов (решение —
+    см. `PLAN-cheat-linux.md`, раздел «Как потреблять
+    ядро»): copy `packages/@ludus`, `npm link`,
+    submodule, или опубликовать как пакет.
+  - ☐ `ludus.config.json`, шаблоны (toolbar / toc /
+    section / row / empty-state / footer), тема
+    (мягкий графит), `css/style.css` без `:root`,
+    `js/app.js` — рендер + поиск + фильтр + copy +
+    тултип.
+  - ☐ `npm run build` → `dist/debian-kb/` —
+    самодостаточная папка.
+  - ☐ **Цель испытания:** найти, что в `@ludus/core`
+    подразумевало Service Desk. Найденное — отдельные
+    коммиты H.8/H.9 обратно в этот репо.
+  - ☐ **Не покрывает:** полный 1-в-1 перенос cheat_linux
+    (это будет следующий шаг после того, как ядро
+    отработает battle test).
 
 ### App
 
