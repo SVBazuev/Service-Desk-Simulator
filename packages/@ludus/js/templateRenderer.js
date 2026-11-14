@@ -35,7 +35,33 @@ export const TemplateRenderer = {
       throw new Error(`TemplateRenderer: unknown template '${templateId}'`);
     }
     const t = document.createElement("template");
-    t.innerHTML = html;
+    const trimmed = html.trim();
+
+    // Contextual root tags (<tr>, <td>, <li>, <option>, …) are stripped
+    // by the parser when placed directly inside <template>. Parse them
+    // inside an appropriate container, then move children into the
+    // template content.
+    let contextTag = null;
+    if (/^<tr[\s>]/i.test(trimmed)) contextTag = "tbody";
+    else if (/^<td[\s>]/i.test(trimmed) || /^<th[\s>]/i.test(trimmed)) contextTag = "tr";
+    else if (/^<tbody[\s>]/i.test(trimmed) || /^<thead[\s>]/i.test(trimmed) || /^<tfoot[\s>]/i.test(trimmed)) contextTag = "table";
+    else if (/^<li[\s>]/i.test(trimmed)) contextTag = "ul";
+    else if (/^<option[\s>]/i.test(trimmed)) contextTag = "select";
+
+    if (contextTag === null) {
+      t.innerHTML = html;
+    } else {
+      const ctx = document.createElement(contextTag);
+      if (contextTag === "tbody" || contextTag === "thead" || contextTag === "tfoot") {
+        const table = document.createElement("table");
+        table.appendChild(ctx);
+        ctx.innerHTML = html;
+      } else {
+        ctx.innerHTML = html;
+      }
+      while (ctx.firstChild) t.content.appendChild(ctx.firstChild);
+    }
+
     this._parsedCache[templateId] = t;
     return t;
   },

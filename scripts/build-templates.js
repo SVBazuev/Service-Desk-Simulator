@@ -15,18 +15,41 @@ function readText(relPath) {
 }
 
 function validateTemplate(id, html) {
-  const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`);
-  const body = dom.window.document.body;
-  if (body.children.length === 0) {
-    console.warn(`⚠ template '${id}': no root element`);
-    return false;
+  const trimmed = html.trim();
+  const isTableRow = /^<tr[\s>]/i.test(trimmed);
+  let root;
+
+  if (isTableRow) {
+    const dom = new JSDOM(
+      `<!DOCTYPE html><html><body><table><tbody>${html}</tbody></table></body></html>`
+    );
+    const tbody = dom.window.document.querySelector("tbody");
+    const rows = tbody ? Array.from(tbody.children) : [];
+    if (rows.length === 0) {
+      console.warn(`⚠ template '${id}': no root element`);
+      return false;
+    }
+    if (rows.length > 1) {
+      console.warn(`⚠ template '${id}': multiple root elements (${rows.length})`);
+      return false;
+    }
+    root = rows[0];
+  } else {
+    const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`);
+    const body = dom.window.document.body;
+    if (body.children.length === 0) {
+      console.warn(`⚠ template '${id}': no root element`);
+      return false;
+    }
+    if (body.children.length > 1) {
+      console.warn(`⚠ template '${id}': multiple root elements (${body.children.length})`);
+      return false;
+    }
+    root = body.children[0];
   }
-  if (body.children.length > 1) {
-    console.warn(`⚠ template '${id}': multiple root elements (${body.children.length})`);
-    return false;
-  }
+
   const seen = new Set();
-  for (const el of body.querySelectorAll("[data-slot]")) {
+  for (const el of root.querySelectorAll("[data-slot]")) {
     const s = el.getAttribute("data-slot");
     if (seen.has(s)) console.warn(`⚠ template '${id}': duplicate data-slot '${s}'`);
     seen.add(s);
