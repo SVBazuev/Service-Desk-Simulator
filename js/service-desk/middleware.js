@@ -2,8 +2,8 @@
  * middleware.js — application-side middlewares registered via the
  * Extension API.
  */
-import { Extension } from "../core/extensions.js";
-import { State } from "../core/state.js";
+import { Extension } from "@ludus/core/js/extensions.js";
+import { State } from "@ludus/core/js/state.js";
 
 Extension.registerSlot("submitLog", []);
 

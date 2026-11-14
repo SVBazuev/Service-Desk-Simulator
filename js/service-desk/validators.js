@@ -2,10 +2,10 @@
  * validators.js — Service Desk custom validation rules
  * registered via Extension API.
  */
-import { Extension } from "../core/extensions.js";
-import { DataStore } from "../core/dataStore.js";
+import { Extension } from "@ludus/core/js/extensions.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
 import { getOrg } from "../utils.js";
-import { PROBLEMS } from "../data-bundle.js";
+import { PROBLEMS } from "../../build/data.js";
 
 Extension.registerFieldFormatter("org", function(value, ticket) {
   return {

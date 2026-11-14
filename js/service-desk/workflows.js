@@ -2,10 +2,10 @@
  * workflows.js — Service Desk workflow descriptors, readonly blocks,
  * widgets, state slots, and helpers that operate on them.
  */
-import { Extension } from "../core/extensions.js";
-import { TemplateRenderer } from "../core/templateRenderer.js";
-import { DataStore } from "../core/dataStore.js";
-import { State } from "../core/state.js";
+import { Extension } from "@ludus/core/js/extensions.js";
+import { TemplateRenderer } from "@ludus/core/js/templateRenderer.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { State } from "@ludus/core/js/state.js";
 import { q, getOrg, getOrgVersions, calcPriority } from "../utils.js";
 import { validateCurrentForm } from "./app/forms.js";
 
@@ -44,80 +44,35 @@ Extension.registerWorkflow("engineer", {
 });
 
 Extension.registerReadonly("registrar", function(ticket) {
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">текущий регистратор</span></div>
-    <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-    <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
-  return grid;
+  return this.bindElement("ro-registrar", { slots: { id: ticket.id } });
 });
 
 Extension.registerReadonly("dispatcher", function(ticket) {
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Ответственный</span><span class="ro-val">Тимлид команды Бета</span></div>
-    <div class="ro-row"><span class="ro-key">Состояние обращения</span><span class="ro-val">регистрация</span></div>
-    <div class="ro-row"><span class="ro-key">Код закрытия</span><span class="ro-val"></span></div>`;
-  return grid;
+  return this.bindElement("ro-dispatcher", { slots: { id: ticket.id } });
 });
 
 Extension.registerReadonly("engineer", function(ticket) {
   const m = calcPriority(ticket.imp, ticket.urg);
-  const grid = document.createElement("div");
-  grid.className = "ro-grid";
-  grid.style.marginBottom = "12px";
-  grid.innerHTML = `
-    <div class="ro-row"><span class="ro-key">Номер обращения</span><span class="ro-val">${TemplateRenderer._esc(ticket.id)}</span></div>
-    <div class="ro-row"><span class="ro-key">Продукт / версия</span><span class="ro-val">${TemplateRenderer._esc(ticket.ver)}</span></div>
-    <div class="ro-row"><span class="ro-key">Срочность / Важность</span><span class="ro-val">${TemplateRenderer._esc(ticket.imp)} / ${TemplateRenderer._esc(ticket.urg)}</span></div>
-    <div class="ro-row"><span class="ro-key">SLA: реакция / решение</span><span class="ro-val">${m ? TemplateRenderer._esc(m.react + " / " + m.sol) : "-"}</span></div>`;
-  return grid;
+  return this.bindElement("ro-engineer", {
+    slots: {
+      id: ticket.id,
+      ver: ticket.ver,
+      "imp-urg": ticket.imp + " / " + ticket.urg,
+      sla: m ? m.react + " / " + m.sol : "-"
+    }
+  });
 });
 
 Extension.registerWidget("versions", function(ticket, context, result) {
-  const wrap = document.createElement("div");
-  wrap.style.marginTop = "12px";
-  wrap.innerHTML = `
-    <label class="form-field full">
-      <span class="form-label">Продукты и версии</span>
-      <div data-slot="ver-list" class="ver-list"></div>
-      <div class="ver-add-wrap">
-        <div class="ver-add-title">Добавить продукт</div>
-        <div class="ver-add-row">
-          <select data-slot="add-prod-select"></select>
-          <button type="button" data-action="add-prod" class="btn">Добавить продукт</button>
-        </div>
-      </div>
-    </label>`;
-  return wrap;
+  return this.bindElement("widget-versions");
 });
 
 Extension.registerWidget("prio-hint", function(ticket, context, result) {
-  const hint = document.createElement("div");
-  hint.className = "prio-hint";
-  hint.dataset.slot = "prio-hint";
-  hint.style.display = "none";
-  hint.innerHTML = `<b>Внимание:</b> Для «Запрос на обслуживание» и «Консультация» по умолчанию устанавливается средний приоритет. Измените вручную, если заказчик указал срочность.`;
-  return hint;
+  return this.bindElement("widget-prio-hint");
 });
 
 Extension.registerWidget("auto-calc", function(ticket, context, result) {
-  const auto = document.createElement("div");
-  auto.className = "auto-box";
-  auto.innerHTML = `
-    <div class="auto-title">Автоматический расчёт</div>
-    <div class="auto-grid">
-      <div class="auto-item"><div class="auto-l">Приоритет</div><div class="auto-v" data-auto="prio">-</div></div>
-      <div class="auto-item"><div class="auto-l">Срок реакции</div><div class="auto-v" data-auto="react">-</div></div>
-      <div class="auto-item"><div class="auto-l">Время решения</div><div class="auto-v" data-auto="sol">-</div></div>
-    </div>`;
-  return auto;
+  return this.bindElement("widget-auto-calc");
 });
 
 Extension.registerSlot("orgVersions", []);

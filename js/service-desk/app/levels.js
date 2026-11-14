@@ -1,9 +1,9 @@
 /**
  * levels.js — level selection screen, snapshots, and level startup.
  */
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
-import { Extension } from "../../core/extensions.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { Extension } from "@ludus/core/js/extensions.js";
 import { showScreen, showModal } from "../../utils.js";
 import { renderQueue } from "./router.js";
 import { resetState } from "./init.js";

@@ -2,7 +2,7 @@
  * kb.js — in-app knowledge base: articles, menu, and the KB modal.
  */
 import { showModal } from "../../utils.js";
-import { KB_L3 } from "../../data-bundle.js";
+import { KB_L3 } from "../../../build/data.js";
 
 let KB = [];
 

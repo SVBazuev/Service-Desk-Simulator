@@ -2,15 +2,15 @@
  * forms.js — form population, cascade handlers, per-field side effects,
  * and clarify helpers.
  */
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
-import { FormRenderer } from "../../core/formRenderer.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { FormRenderer } from "@ludus/core/js/formRenderer.js";
 import {
   q, fillSelect,
   getOrg, getContactsByOrg, getCatList, getSubList, getOrgVersions, getTicket
 } from "../../utils.js";
 import { renderVerList, updateAutoCalc } from "../workflows.js";
-import { PROBLEMS } from "../../data-bundle.js";
+import { PROBLEMS } from "../../../build/data.js";
 
 export function populateSelects(registry, t, workflow) {
   const f = registry.fields;

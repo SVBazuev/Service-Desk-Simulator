@@ -4,7 +4,7 @@
 работу Service Desk и помогает отработать навыки регистрации обращений,
 распределения задач и решения инцидентов (по методологии ITIL).
 
-> Внутри используется schema-driven form/workflow runtime.
+> Внутри используется schema-driven form/workflow runtime — Ludus core.
 
 ## 🎮 Уровни (сценарии симулятора)
 
@@ -36,22 +36,54 @@ data/                ← чистые данные симулятора
 ├── problems.json    ← Problem Records
 └── kb-l3.json       ← статьи базы знаний
 
+templates/           ← HTML-шаблоны (shell, panels, readonly, widgets)
+themes/              ← цветовые токены (default.json)
+css/style.css        ← CSS-правила (без :root — токены в themes/)
+
 js/                  ← код
-├── core/            ← core (state, dataStore, formRenderer,
+├── core/            ← runtime (state, dataStore, formRenderer,
 │                       templateRenderer, validator, progressStore)
-├── app.js           ← бизнес-логика Service Desk (router, submits,
-│                       каскады, hooks)
+├── service-desk/    ← бизнес-логика Service Desk
+│   ├── app/         ← router, submits, forms, levels, reference, kb
+│   └── *.js         ← workflows, panels, validators, middleware
+├── app.js           ← entry: DOMContentLoaded → init()
 └── autotests.js     ← встроенные автотесты
+
+scripts/             ← build-time assembly
+├── build-data.js    ← data/*.json      → dist/data.js
+├── build-templates.js ← templates/*.html → dist/ludus-templates.js
+└── build-css.js     ← themes/ + css/   → dist/ludus.css
 ```
 
 **Данные полностью отделены от кода**: добавление новой задачи,
-нового уровня или новой роли сводится к правке JSON + `npm run build`.
+нового уровня или новой роли в существующее приложение сводится к
+правке JSON + `npm run build`.
+
+## 🧭 Как это устроено (термины)
+
+- **Runtime** (`js/core/`) — binder. Связывает данные с шаблонами,
+  переключает токены, обслуживает extension points. Не генерирует
+  CSS, не собирает HTML.
+- **Build-time assembly** (`scripts/build-*.js`) — сериализует
+  данные, конкатенирует шаблоны, эмитит CSS.
+- **Packager** (в планах, `Commit H`): `ludus build` будет собирать
+  `dist/<app>/` из core + config + app-кода. Аналог
+  `spring-boot:repackage`, а не компилятора: источники уже
+  исполнимы, задача — собрать их в одну папку.
+
+Сейчас packager ещё не выделен: deployable — это корневая папка
+(`index.html` + `js/` + `dist/`). Serve через локальный сервер
+(см. «Быстрый старт»).
 
 ## ✨ Особенности
 
 - **Данные в JSON.** Справочники, задачи, схемы, манифесты уровней —
-  всё в `data/`. `npm run build` собирает их в один
-  `js/data-bundle.js`.
+  всё в `data/`. `npm run build` собирает их в один `dist/data.js`
+  (ESM-модуль с именованными экспортами).
+- **HTML-шаблоны в `templates/`.** Структура панелей, readonly-блоков
+  и виджетов живёт в HTML-шаблонах; `npm run build` эмитит их в
+  `dist/ludus-templates.js`. Приложение их только биндит через
+  `TemplateRenderer.bind(...)`.
 - **Dynamic Anchors (core).** Поля формы рендерятся на лету с
   уникальными id; доступ к ним идёт через `Registry`
   (`state.currentForm`), а не через `getElementById`.
@@ -62,6 +94,9 @@ js/                  ← код
   единственном экземпляре (`#screen-queue`, `#modal-intro`).
   Манифест уровня не содержит ни одного DOM-id — только данные
   (title, labels) и ссылки на схемы/тикеты.
+- **CSS-токены в `themes/default.json`.** `npm run build` эмитит
+  `dist/ludus.css` с `:root` (токены) + `@layer ludus.components`
+  (правила). Переключение темы — правка `themes/*.json` + пересборка.
 - **Прогресс в `localStorage`.**
 - **Встроенная база знаний** по ITIL, SLA и методам расследования.
 - **Автотесты** прямо в UI: позитивные + негативные сценарии.
@@ -71,6 +106,8 @@ js/                  ← код
 ### Вариант 1: локальный сервер (рекомендуется)
 
 ```bash
+npm install
+npm run build
 python -m http.server 8000
 # или
 npx serve .
@@ -100,13 +137,19 @@ npm run build
 3. `npm run build`.
 4. Обнови страницу.
 
-### Как изменить поля или UI-обвязку карточки?
+### Как изменить поля карточки?
 
-- **Поля** → массив `fields` в `data/schemas/card-lX.json`.
-- **UI-обвязку** (панели, диагностика, submit-кнопка) → ключ
-  `"template": "registrar" | "dispatcher" | "engineer"` в той
-  же схеме. Шаблоны живут в `js/core/templateRenderer.js`;
-  приложение от них только наследуется по имени.
+**Поля** → массив `fields` в `data/schemas/card-lX.json`.
+
+### Как изменить UI-обвязку (панели, диагностика, кнопки)?
+
+- **Структура** — HTML-шаблон в `templates/panels/`,
+  `templates/shell/`, `templates/readonly/`, `templates/widgets/`.
+  `npm run build` эмитит их в `dist/ludus-templates.js`.
+- **Логика панели** (panel kind) — `js/service-desk/panels.js`.
+- **Набор панелей для workflow** — `Extension.registerWorkflow`
+  в `js/service-desk/workflows.js`.
+- **Тема** — `themes/default.json`.
 
 ### Как добавить новый уровень?
 
@@ -114,10 +157,21 @@ npm run build
    intro, schema, tickets).
 2. Добавь в `data/levels/index.json` →
    `"levels": […, "lN.json"]`.
-3. Если нужен новый workflow — добавь шаблон в
-   `js/core/templateRenderer.js` (это правка core, не
-   приложения).
+3. Если нужен новый workflow — зарегистрируй его через
+   `Extension.registerWorkflow` в `js/service-desk/workflows.js`
+   и (если требуется новая структура панели) добавь HTML-шаблон
+   в `templates/`.
 4. `npm run build`.
+
+### Как изменить тему?
+
+1. Отредактируй `themes/default.json` (единственный источник
+   правды о цветах).
+2. `npm run build`.
+3. Обнови страницу.
+
+`css/style.css` содержит CSS-правила, но не токены (`:root`
+эмитится build-step'ом из `themes/default.json`).
 
 ## 🧪 Тестирование
 
@@ -128,9 +182,13 @@ npm test
 ```
 
 Смоук-тест прогоняет все четыре уровня (L1 22 / L2 16 / L3 12 /
-L4 manifest) и проверяет позитивные и негативные сценарии.
+L4 manifest) и проверяет позитивные и негативные сценарии, а также
+контракты build-артефактов (шаблоны, токены, middleware,
+pluggable progress store).
 
 ## 🗺️ Roadmap
 
 См. `TODO.md`. Там — карта из двух треков: *Application* и
-*Core*.
+*Core*. Ближайшие шаги: `Commit H.5` (выделение `@ludus/core`
+в workspace-пакет) и `Commit H.6` (`ludus build` — упаковщик,
+`dist/<app>/` как deployable артефакт).

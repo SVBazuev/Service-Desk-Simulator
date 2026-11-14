@@ -2,10 +2,10 @@
  * reference.js — directories (organizations, employees, contacts)
  * and the Problem Records registry modal.
  */
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
 import { showModal, getContactsByOrg } from "../../utils.js";
-import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../data-bundle.js";
+import { PROBLEMS, ARCHIVE_INCIDENTS } from "../../../build/data.js";
 
 export function openOrgList() {
   const tbody = document.getElementById("org-list-body");

@@ -1,0 +1,13 @@
+{
+    "panel": "shell/panel.html",
+    "panel-no-footer": "shell/panel-no-footer.html",
+    "form-grid": "shell/form-grid.html",
+    "ro-registrar": "readonly/registrar.html",
+    "ro-dispatcher": "readonly/dispatcher.html",
+    "ro-engineer": "readonly/engineer.html",
+    "widget-versions": "widgets/versions.html",
+    "widget-prio-hint": "widgets/prio-hint.html",
+    "widget-auto-calc": "widgets/auto-calc.html",
+    "panel-incoming": "panels/panel-incoming.html",
+    "panel-diagnostics": "panels/panel-diagnostics.html"
+}

@@ -2,7 +2,7 @@
  * formRenderer.js — генератор форм и Component Registry (dynamic anchors).
  */
 import { DataStore } from "./dataStore.js";
-import { fillSelect } from "../utils.js";
+import { fillSelect } from "./utils.js";
 
 export const FormRenderer = {
   currentContext: null,

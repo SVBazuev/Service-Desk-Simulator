@@ -1,26 +1,13 @@
-import { DataStore } from "./core/dataStore.js";
-import { State } from "./core/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { State } from "@ludus/core/js/state.js";
+
+export { fillSelect } from "@ludus/core/js/utils.js";
 
 export function q(sel) { return document.querySelector(sel); }
 
 export function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g,
     ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
-}
-
-export function fillSelect(sel, items) {
-  if (!sel) return;
-  sel.innerHTML = "";
-  const def = document.createElement("option");
-  def.value = "";
-  def.textContent = "Выберите...";
-  sel.appendChild(def);
-  for (const it of items) {
-    const opt = document.createElement("option");
-    opt.value = it.value;
-    opt.textContent = it.label;
-    sel.appendChild(opt);
-  }
 }
 
 export function showScreen(id) {

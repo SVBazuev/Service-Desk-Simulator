@@ -33,6 +33,13 @@ export const Extension = {
     Validator.registerFieldFormatter(fieldId, fn);
   },
 
+  registerTemplates: function(source) {
+    if (!source || typeof source !== "object") {
+      throw new Error("Extension.registerTemplates: source must be an object");
+    }
+    TemplateRenderer.registerTemplates(source);
+  },
+
   use: function(fn) {
     if (typeof fn !== "function") {
       throw new Error("Extension.use: middleware must be a function");

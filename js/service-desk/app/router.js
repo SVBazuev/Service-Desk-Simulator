@@ -2,11 +2,11 @@
  * router.js — navigation between screens, queue rendering, work screen
  * mounting, and final results.
  */
-import { State } from "../../core/state.js";
-import { DataStore } from "../../core/dataStore.js";
-import { TemplateRenderer } from "../../core/templateRenderer.js";
-import { FormRenderer } from "../../core/formRenderer.js";
-import { Extension } from "../../core/extensions.js";
+import { State } from "@ludus/core/js/state.js";
+import { DataStore } from "@ludus/core/js/dataStore.js";
+import { TemplateRenderer } from "@ludus/core/js/templateRenderer.js";
+import { FormRenderer } from "@ludus/core/js/formRenderer.js";
+import { Extension } from "@ludus/core/js/extensions.js";
 import {
   q, showScreen, escapeHtml,
   getOrg, getTicket, getTickets, getResults
@@ -20,7 +20,7 @@ import {
 import { renderVerList, addProductToCard, updateAutoCalc } from "../workflows.js";
 import { switchDiagTab } from "../panels.js";
 import { makeSnapshot } from "./levels.js";
-import { CONTACTS } from "../../data-bundle.js";
+import { CONTACTS } from "../../../build/data.js";
 
 export function onWorkClick(e) {
   const t = e.target.closest('[data-action]');
