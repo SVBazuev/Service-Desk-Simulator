@@ -533,6 +533,56 @@ try {
 
   console.log("H.6 packager: dist/service-desk-simulator — OK");
 
+  // H.8e: TemplateRenderer.repeat for list slots
+  TemplateRenderer.registerTemplates({
+    "h8e-obj": `<div data-slot="items"><template><span data-bind-class="cls" data-bind="label"></span></template></div>`,
+    "h8e-str": `<ul data-slot="items"><template><li data-bind="."></li></template></ul>`,
+    "h8e-no-tpl": `<div data-slot="items"></div>`
+  });
+
+  // Object items: data-bind-class + data-bind
+  const rObj = TemplateRenderer.bind("h8e-obj", {
+    repeat: {
+      items: [
+        { cls: "badge badge-hot", label: "HOT" },
+        { cls: "badge badge-prod", label: "PROD" }
+      ]
+    }
+  });
+  const objSpans = rObj.firstElementChild.querySelectorAll("span");
+  if (objSpans.length !== 2) err(`H.8e: object items count ${objSpans.length} != 2`);
+  if (objSpans[0]?.className !== "badge badge-hot") err(`H.8e: object class[0] '${objSpans[0]?.className}'`);
+  if (objSpans[0]?.textContent !== "HOT") err(`H.8e: object text[0] '${objSpans[0]?.textContent}'`);
+  if (objSpans[1]?.className !== "badge badge-prod") err(`H.8e: object class[1]`);
+  if (objSpans[1]?.textContent !== "PROD") err(`H.8e: object text[1]`);
+
+  // Primitive items: data-bind="." sets textContent
+  const rStr = TemplateRenderer.bind("h8e-str", {
+    repeat: { items: ["alpha", "beta", "gamma"] }
+  });
+  const strLis = rStr.firstElementChild.querySelectorAll("li");
+  if (strLis.length !== 3) err(`H.8e: string items count ${strLis.length} != 3`);
+  if (strLis[1]?.textContent !== "beta") err(`H.8e: string text[1] '${strLis[1]?.textContent}'`);
+
+  // Empty array: no clones
+  const rEmpty = TemplateRenderer.bind("h8e-str", { repeat: { items: [] } });
+  if (rEmpty.firstElementChild.querySelectorAll("li").length !== 0) {
+    err("H.8e: empty items should produce no children");
+  }
+
+  // Missing <template>: warn, no crash, slot stays empty
+  const rNoTpl = TemplateRenderer.bind("h8e-no-tpl", { repeat: { items: [1, 2] } });
+  if (!rNoTpl) err("H.8e: missing <template> should not crash");
+  if (rNoTpl.firstElementChild.children.length !== 0) {
+    err("H.8e: missing <template> slot should stay empty");
+  }
+
+  // Non-array repeat: warn, no crash
+  const rBad = TemplateRenderer.bind("h8e-str", { repeat: { items: "not-an-array" } });
+  if (!rBad) err("H.8e: non-array items should not crash");
+
+  console.log("H.8e templates: repeat for list slots — OK");
+
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);
   if (!Array.isArray(l4Ids) || !l4Ids.includes(4)) {

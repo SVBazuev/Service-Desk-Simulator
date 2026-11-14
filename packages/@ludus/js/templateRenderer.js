@@ -93,6 +93,43 @@ export const TemplateRenderer = {
       for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
     }
 
+    // repeat: for each { slotId: items[] }, clone the inline <template>
+    // inside the slot once per item, filling [data-bind] (textContent)
+    // and [data-bind-class] (classList) from item fields.
+    for (const [slotId, items] of Object.entries(opts.repeat || {})) {
+      if (!Array.isArray(items)) {
+        console.warn(`[TemplateRenderer] repeat '${slotId}' must be an array`);
+        continue;
+      }
+      const slot = frag.querySelector(`[data-slot="${slotId}"]`);
+      if (!slot) {
+        console.warn(`[TemplateRenderer] repeat slot '${slotId}' not found in '${templateId}'`);
+        continue;
+      }
+      const innerTpl = slot.querySelector("template");
+      if (!innerTpl) {
+        console.warn(`[TemplateRenderer] repeat slot '${slotId}' has no <template> child`);
+        continue;
+      }
+      for (const item of items) {
+        const clone = innerTpl.content.cloneNode(true);
+        for (const el of clone.querySelectorAll("[data-bind]")) {
+          const field = el.getAttribute("data-bind");
+          const value = field === "." ? item : (item == null ? null : item[field]);
+          if (value != null) el.textContent = String(value);
+        }
+        for (const el of clone.querySelectorAll("[data-bind-class]")) {
+          const field = el.getAttribute("data-bind-class");
+          const value = field === "." ? item : (item == null ? null : item[field]);
+          if (value != null) {
+            const classes = String(value).split(/\s+/).filter(Boolean);
+            el.classList.add(...classes);
+          }
+        }
+        slot.appendChild(clone);
+      }
+    }
+
     if (typeof opts.onMount === "function") opts.onMount(frag);
     return frag;
   },
