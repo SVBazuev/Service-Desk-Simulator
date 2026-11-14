@@ -23,6 +23,11 @@ global.localStorage = {
   removeItem(key) { delete this.store[key]; },
   clear() { this.store = {}; }
 };
+global.HTMLElement = dom.window.HTMLElement;
+global.customElements = dom.window.customElements;
+global.MouseEvent = dom.window.MouseEvent;
+global.KeyboardEvent = dom.window.KeyboardEvent;
+global.FocusEvent = dom.window.FocusEvent;
 
 const { State } = await import("@ludus/core/js/state.js");
 const { DataStore } = await import("@ludus/core/js/dataStore.js");
@@ -582,6 +587,110 @@ try {
   if (!rBad) err("H.8e: non-array items should not crash");
 
   console.log("H.8e templates: repeat for list slots — OK");
+
+  // H.8f: <ludus-tooltip> with collision detection
+  const { registerTooltip } = await import("@ludus/core/js/tooltip.js");
+  registerTooltip();
+  registerTooltip(); // idempotent — no throw on second call
+
+  if (!customElements.get("ludus-tooltip")) {
+    err("H.8f: customElements.get('ludus-tooltip') not defined after register");
+  }
+  if (!document.getElementById("ludus-tooltip-style")) {
+    err("H.8f: <style id=ludus-tooltip-style> not injected");
+  }
+
+  const tipHost = document.createElement("ludus-tooltip");
+  tipHost.setAttribute("content", "sudo hint");
+  tipHost.textContent = "su -";
+  document.body.appendChild(tipHost);
+
+  const tipEl = tipHost.querySelector(".ludus-tooltip");
+  if (!tipEl) {
+    err("H.8f: tooltip child .ludus-tooltip not created on connect");
+  }
+  if (tipEl.getAttribute("role") !== "tooltip") {
+    err(`H.8f: role expected 'tooltip', got '${tipEl.getAttribute("role")}'`);
+  }
+  if (tipEl.hidden !== true) {
+    err("H.8f: tooltip should be hidden initially");
+  }
+  if (tipHost.getAttribute("tabindex") !== "0") {
+    err(`H.8f: tabindex expected '0', got '${tipHost.getAttribute("tabindex")}'`);
+  }
+
+  // Open on mouseenter
+  tipHost.dispatchEvent(new window.MouseEvent("mouseenter"));
+  if (tipEl.hidden !== false) {
+    err("H.8f: mouseenter should open tooltip");
+  }
+  if (tipEl.textContent !== "sudo hint") {
+    err(`H.8f: tooltip text '${tipEl.textContent}' != 'sudo hint'`);
+  }
+  if (tipHost.getAttribute("aria-describedby") !== tipEl.id) {
+    err(`H.8f: aria-describedby '${tipHost.getAttribute("aria-describedby")}' != '${tipEl.id}'`);
+  }
+
+  // Close on Escape
+  tipHost.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  if (tipEl.hidden !== true) {
+    err("H.8f: Escape should close tooltip");
+  }
+  if (tipHost.hasAttribute("aria-describedby")) {
+    err("H.8f: aria-describedby should be removed on close");
+  }
+
+  // Reopen and close on mouseleave
+  tipHost.dispatchEvent(new window.MouseEvent("mouseenter"));
+  if (tipEl.hidden !== false) {
+    err("H.8f: reopen failed");
+  }
+  tipHost.dispatchEvent(new window.MouseEvent("mouseleave"));
+  if (tipEl.hidden !== true) {
+    err("H.8f: mouseleave should close tooltip");
+  }
+
+  // Disabled attr blocks open
+  tipHost.setAttribute("disabled", "");
+  tipHost.dispatchEvent(new window.MouseEvent("mouseenter"));
+  if (tipEl.hidden !== true) {
+    err("H.8f: disabled should block open");
+  }
+  tipHost.removeAttribute("disabled");
+
+  // Empty content blocks open
+  tipHost.setAttribute("content", "");
+  tipHost.dispatchEvent(new window.MouseEvent("mouseenter"));
+  if (tipEl.hidden !== true) {
+    err("H.8f: empty content should block open");
+  }
+  tipHost.setAttribute("content", "sudo hint");
+
+  // Content change while open updates text
+  tipHost.dispatchEvent(new window.MouseEvent("mouseenter"));
+  tipHost.setAttribute("content", "updated hint");
+  if (tipEl.textContent !== "updated hint") {
+    err(`H.8f: content update failed, got '${tipEl.textContent}'`);
+  }
+  tipHost.dispatchEvent(new window.MouseEvent("mouseleave"));
+
+  // Focus opens / focusout closes
+  tipHost.dispatchEvent(new window.FocusEvent("focusin"));
+  if (tipEl.hidden !== false) {
+    err("H.8f: focusin should open tooltip");
+  }
+  tipHost.dispatchEvent(new window.FocusEvent("focusout"));
+  if (tipEl.hidden !== true) {
+    err("H.8f: focusout should close tooltip");
+  }
+
+  // Disconnect cleanup
+  tipHost.remove();
+  if (tipHost.hasAttribute("aria-describedby")) {
+    err("H.8f: aria-describedby should be removed on disconnect");
+  }
+
+  console.log("H.8f tooltip: collision detection — OK");
 
   // L4 manifest
   const l4Ids = DataStore.getLevels().map(l => l.id);
